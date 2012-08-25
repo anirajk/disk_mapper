@@ -31,7 +31,35 @@ class StorageServer:
             files = self._get_s3_path(file_list)
 
         self._start_response()
-        return [files]
+        return [files + "\n"]
+
+    def save_to_disk(self):
+        self.status = '200 OK'
+        path = self.environ["PATH_TRANSLATED"]
+        path_info = self.environ["PATH_INFO"]
+
+        if not self._is_host_initialized(path_info):
+            self.status = '417 Expectation Failed'
+            self._start_response()
+            return "Host Not initialized for path : " + path_info
+            
+        block_size = 4096
+        file_size = int(self.environ.get('CONTENT_LENGTH','0'))
+        chunks = file_size / block_size
+        last_chunk_size = file_size % block_size
+    
+        f = open(path,'wb')
+        while chunks is not 0:
+            file_chunk = self.environ['wsgi.input'].read(4096)
+            f.write(file_chunk)
+            chunks -= 1
+
+        file_chunk = self.environ['wsgi.input'].read(last_chunk_size)
+        f.write(file_chunk)
+        f.close()
+
+        self._start_response()
+        return ["Saved file to disk"]
 
     def delete(self):
         self.status = '202 Accepted'
@@ -64,6 +92,14 @@ class StorageServer:
         self._start_response()
         return ["Deleted " + self.environ["SERVER_NAME"] + self.environ["PATH_INFO"]]
 
+    def _is_host_initialized(self, path):
+        subfolders = path.split('/')
+        document_root = self.environ["DOCUMENT_ROOT"]
+        host_folder = document_root + "/" + subfolders[1] + "/" + subfolders[2]
+        if os.path.isdir(host_folder):
+            return True
+        return False
+
     def _file_iterater(self, path, recursive=False):
 
         files = []
@@ -74,14 +110,17 @@ class StorageServer:
             
         if "recursive=true" not in self.query_string:
             for item in os.listdir(path):
-                files.append(os.path.join(path, item))
+                full_path = os.path.join(path, item)
+                if os.path.isdir(full_path):
+                    full_path = full_path + "/"
+                files.append(full_path)
 
         else:
             for root, dirnames, filenames in os.walk(path, followlinks=True):
                 for name in filenames:
                     files.append(os.path.join(root, name))
                 for name in dirnames:
-                    files.append(os.path.join(root, name))
+                    files.append(os.path.join(root, name) + "/")
 
         return "\n".join(sorted(files))
     

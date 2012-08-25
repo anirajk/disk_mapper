@@ -3,10 +3,10 @@
 # Functions used.
 main () {
 
-	STORAGE_SERVER=""
+    STORAGE_SERVER=""
 
-	# Route to function depending on command. Defaults to usage.
-	case "$1" in
+    # Route to function depending on command. Defaults to usage.
+    case "$1" in
         get)
             download $@
             ;;
@@ -15,11 +15,11 @@ main () {
             upload $@
             ;;
          
-		sync)
-			sync $@   
-			;;
+        sync)
+            sync $@   
+            ;;
         la)
-	    	RECURSIVE="true"
+            RECURSIVE="true"
             list $@
             ;;
 
@@ -36,87 +36,87 @@ main () {
             ;;
          
         -h)
-			die
-			;;
+            die
+            ;;
 
         *)
             die "\nUsage: Need a command.\n"
-	esac
+    esac
 }
 
 # Verify md5 hash of local and remote file.
 verifyFile () {
-	# Get hash of local and remote file and compare.
-	remote_hash=$1
-	file_path=$2
-	local_hash=$(md5sum $file_path | sed "s/ .*//")
-	[ "${local_hash}" = "${remote_hash}" ] && echo 0
-	[ "${local_hash}" != "${remote_hash}" ] && echo 1
+    # Get hash of local and remote file and compare.
+    remote_hash="$(echo $1)"
+    file_path=$2
+    local_hash=$(md5sum $file_path | sed "s/ .*//")
+    [[ "${local_hash}" = $remote_hash ]] && echo 0
+    [[ "${local_hash}" != $remote_hash ]] && echo 1
 }
 
 # List files in storage server.
-# curl 'http://empire.mbbackup.zynga.com/?path=empire:empire-user-b-012/inc/&list=true' 	
+# curl 'http://empire.mbbackup.zynga.com/?path=empire:empire-user-b-012/inc/&list=true'     
 list () {
-	# Exit if number of args is not 2.
-	[[ $# -ne 2 ]] && exit 1
+    # Exit if number of args is not 2.
+    [[ $# -ne 2 ]] && exit 1
 
-	path=$2
-	
-	# Construct url based on remote path.
-	url=$(getUrlPrefix $path)
-	
-	url="$url?list=true"
-	[[ $RECURSIVE = "true" ]] && url="$url&recursive=true"
+    path=$2
+    
+    # Construct url based on remote path.
+    url=$(getUrlPrefix $path)
+    
+    url="$url?list=true"
+    [[ $RECURSIVE = "true" ]] && url="$url&recursive=true"
 
-	# Execute curl
-	curl -sfL --connect-timeout 60 --max-time 900 "$url" 
-	exit $?
+    # Execute curl
+    curl -sfL --connect-timeout 60 --max-time 900 "$url" 
+    exit $?
 }
 
 
 # Download file from storage server.
 # curl -L -o /tmp/download mbbackup.zynga.com?path=empire:empire-user-b-012/inc/jnk
 download () {
-	# If number of args is not 2 or 3, quit
-	[[ $# -ne 2 ]] && [[ $# -ne 3 ]] && exit 1	
+    # If number of args is not 2 or 3, quit
+    [[ $# -ne 2 ]] && [[ $# -ne 3 ]] && exit 1    
 
-	# If number of args is 3
-	[[ $# -eq 3 ]] && path=$2 && file_path=$3 
+    # If number of args is 3
+    [[ $# -eq 3 ]] && path=$2 && file_path=$3 
 
-	# If filepath is only filename, append current directory.
-	[[ $# -eq 3 ]] && [[ "${file_path:0:1}" != "/" ]] && file_path="$PWD/$file_path"
-	
-	# If filepath does not have filename, use remote filename.
-	[[ $# -eq 3 ]] && [[ "${file_path: -1}" = "/" ]] && file_path="$file_path$(basename $path)"
+    # If filepath is only filename, append current directory.
+    [[ $# -eq 3 ]] && [[ "${file_path:0:1}" != "/" ]] && file_path="$PWD/$file_path"
+    
+    # If filepath does not have filename, use remote filename.
+    [[ $# -eq 3 ]] && [[ "${file_path: -1}" = "/" ]] && file_path="$file_path$(basename $path)"
 
-	# If number of args is 2
-	[[ $# -eq 2 ]] && path=$2 && file_path="$PWD/$(basename $path)"
+    # If number of args is 2
+    [[ $# -eq 2 ]] && path=$2 && file_path="$PWD/$(basename $path)"
 
-	# If file_path is a dot.
-	[[ "$(basename $file_path)" == "." ]] && file_path="$PWD/$(basename $path)"
+    # If file_path is a dot.
+    [[ "$(basename $file_path)" == "." ]] && file_path="$PWD/$(basename $path)"
 
-	# Construct url based on remote path.
-	url=$(getUrlPrefix $path)
+    # Construct url based on remote path.
+    url=$(getUrlPrefix $path)
 
-	# Directory to which the file should be downloaded to.
-	dir_path=$(dirname $file_path)
-	
-	# Create directory if directory does not exist.
-	[ -d "$dir_path" ] || mkdir -p "$dir_path"
+    # Directory to which the file should be downloaded to.
+    dir_path=$(dirname $file_path)
+    
+    # Create directory if directory does not exist.
+    [ -d "$dir_path" ] || mkdir -p "$dir_path"
 
-	remote_hash=$(curl -sfiL --connect-timeout 60 --max-time 900 "$url?list=true" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    remote_hash=$(curl -sfiL --connect-timeout 60 --max-time 900 "$url?list=true" | grep Etag | sed 's/Etag: //' | tr -d \\r)
 
-	# If local file exists and  md5hash of local and remote file match do not download again.
-	[[ -f $file_path ]] && verified=$(verifyFile $remote_hash $file_path) 
-	[[ -n $verified ]] && [[ $verified -eq 0 ]] && exit 0
+    # If local file exists and  md5hash of local and remote file match do not download again.
+    [[ -f $file_path ]] && verified=$(verifyFile $remote_hash $file_path) 
+    [[ -n $verified ]] && [[ $verified -eq 0 ]] && exit 0
 
-	# If md5hash does not match and file exists, delete file and download again.
-	[[ -f $file_path ]] && rm -f $file_path
+    # If md5hash does not match and file exists, delete file and download again.
+    [[ -f $file_path ]] && rm -f $file_path
 
-	# Execute curl
+    # Execute curl
         # Check if md5hash of local and remote file match.
         #curl -sfL -o "$file_path" "$url" && verified=$(verifyFile $actual_url $file_path) 
-	#wget --quiet --level=0 -O /tmp/blah empire.mbbackup.zynga.com/?path=empire:empire-mba-02/hostinfo-empire-mba-02
+    #wget --quiet --level=0 -O /tmp/blah empire.mbbackup.zynga.com/?path=empire:empire-mba-02/hostinfo-empire-mba-02
 
         wget --quiet --level=0 -O "$file_path" "$url" && verified=$(verifyFile $remote_hash $file_path) 
         [[ -n $verified ]] && [[ $verified -eq 0 ]] && exit 0
@@ -127,100 +127,103 @@ download () {
 # Sync file or folder.
 # zstore_cmd sync source destination.
 sync () {
-	
-	# If source is s3.
-	if [[ "$2" =~ "s3://" ]]
-	then
-		download $@
-	# If source is local file or folder.
-	else
-		upload $@
-	fi
+    
+    # If source is s3.
+    if [[ "$2" =~ "s3://" ]]
+    then
+        download $@
+    # If source is local file or folder.
+    else
+        upload $@
+    fi
 }
 
 # Upload file to storage server.
 # curl -F userfile=@/tmp/download http://empire.mbbackup.zynga.com/'?path=empire:empire-user-b-012/inc/shabeeb&upload=true'
 upload () {
-	# if number of args is not 2 or 3, quit
-	[[ $# -ne 3 ]] && echo "Invalid number of arguments." && exit 1	
+    # if number of args is not 2 or 3, quit
+    [[ $# -ne 3 ]] && echo "Invalid number of arguments." && exit 1    
 
-	file_path=$2
-	path=$3
-	game_name=$(getGameName $path)
-	[[ -z $game_name ]] && echo "Invalid Game Name" && exit 1
+    file_path=$2
+    path=$3
+    game_name=$(getGameName $path)
+    [[ ! -f $file_path ]] && exit 1
+    [[ -z $game_name ]] && echo "Invalid Game Name" && exit 1
 
-	# Construct url based on remote path.
-	url=$(getUrlPrefix $path)
+    # Construct url based on remote path.
+    url=$(getUrlPrefix $path)
 
-	# If remote path does not have file name, append file name to remote path
-	[[ ${url: -1} = "/" ]] && file_name=$(basename $file_path) && url="$url$file_name"
+    # If remote path does not have file name, append file name to remote path
+    [[ ${url: -1} = "/" ]] && file_name=$(basename $file_path) && url="$url$file_name"
 
-	actual_url=$(curl  -sL --connect-timeout 60 --max-time 900 "$url&get_url=true")
+    remote_hash=$(curl -siL --connect-timeout 60 --max-time 900 "$url?list=true" | grep Etag | sed 's/Etag: //' | tr -d \\r)
 
-	# If local file exists and md5hash of local and remote file match do not upload again.
-	[[ -f $file_path ]] && verified=$(verifyFile $actual_url $file_path) 
-	[[ -n $verified ]] && [[ $verified -eq 0 ]] && exit 0
-	
-	# Execute curl
-	curl  -s --connect-timeout 60 --max-time 900 -F "userfile=@$file_path" "$actual_url&upload=true"
+    # If local file exists and md5hash of local and remote file match do not upload again.
+    [[ $remote_hash != '' ]] && verified=$(verifyFile "$remote_hash" $file_path) 
+    [[ -n $verified ]] && [[ $verified -eq 0 ]] && exit 0
+    
+    # Execute curl
+    curl -sfL --connect-timeout 60 --max-time 900 --request "POST" --data-binary "@$file_path" "$url"
+    [[ $? -ne 0 ]] && exit 1
 
-	# Check if md5hash of local and remote file match.
-	verified=$(verifyFile $actual_url $file_path)
-	exit $verified
+    # Check if md5hash of local and remote file match.
+    remote_hash=$(curl -siL --connect-timeout 60 --max-time 900 "$url?list=true" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    verified=$(verifyFile $remote_hash $file_path)
+    exit $verified
 }
 
 # Delete file from storage server.
 delete () {
-	# Exit if number of args is not 2.
-	[[ $# -ne 2 ]] && echo "Invalid number of arguments" && exit 1
+    # Exit if number of args is not 2.
+    [[ $# -ne 2 ]] && echo "Invalid number of arguments" && exit 1
 
-	path=$2
+    path=$2
 
-	# Construct url based on remote path.
-	url=$(getUrlPrefix $path)
+    # Construct url based on remote path.
+    url=$(getUrlPrefix $path)
 
-	# Execute curl
-	curl -sfL --connect-timeout 60 --max-time 900 -X "DELETE" "$url"
-	exit $?
+    # Execute curl
+    curl -sfL --connect-timeout 60 --max-time 900 -X "DELETE" "$url"
+    exit $?
 }
 
 # Create url prefix.
 getUrlPrefix () {
-	path="$1"
-	#game_name=$(getGameName $path)
-	#[[ -z $game_name ]] && echo "Invalid Game Name" && exit 1
-	#url_path=$(expr "$path" : 's3://[a-zA-Z0-9\.]*/[a-zA-Z]*/\(.*\)') 
-	#[[ -z $url_path ]]  && exit 1
+    path="$1"
+    #game_name=$(getGameName $path)
+    #[[ -z $game_name ]] && echo "Invalid Game Name" && exit 1
+    #url_path=$(expr "$path" : 's3://[a-zA-Z0-9\.]*/[a-zA-Z]*/\(.*\)') 
+    #[[ -z $url_path ]]  && exit 1
         #url="$game_name.$STORAGE_SERVER/?path=$game_name:$url_path"
-	#echo $url
+    #echo $url
     echo $path | sed  's#^s3://#http://#' | sed 's/\(\/\/[a-zA-Z0-9\.]*\/\)/\1api\//'
 }
 
 # Get game name from path.
 # Ex. empire from empire:empire-user-b-012/inc/
 getGameName () {
-	path=$1
-	echo $(expr "$path" : 's3://[a-zA-Z0-9\.]*/\([a-zA-Z]*\)/')
+    path=$1
+    echo $(expr "$path" : 's3://[a-zA-Z0-9\.]*/\([a-zA-Z]*\)/')
 }
 
 die () {
-	[ "$1" != "" ] && echo -e $1
-	echo  -e "$(basename $0)  <command> [arg(s)]\n"
-	echo  "Commands:"
-	echo  -e "\n  List files or folder."
-	echo  "     $(basename $0)  ls  s3://<game_name>/host_name/path"
-	echo  -e "\n  List folders recursively."
-	echo  "     $(basename $0)  la  s3://<game_name>/host_name/path/"
-	echo  -e "\n  Download a file."
-	echo  "     $(basename $0)  get  s3://<game_name>/host_name/path"
-	echo  "     $(basename $0)  get  s3://<game_name>/host_name/path  <file>"
-	echo  -e "\n  Upload a file."
-	echo  "     $(basename $0)  put  <file> s3://<game_name>/host_name/path"
-	echo  -e "\n  Delete file."
-	echo  "     $(basename $0)  del  s3://<game_name>/host_name/path"
-	echo  -e "\n  Sync file."
-	echo  "     $(basename $0)  sync  source destination"
-	echo  -e "\n"
+    [ "$1" != "" ] && echo -e $1
+    echo  -e "$(basename $0)  <command> [arg(s)]\n"
+    echo  "Commands:"
+    echo  -e "\n  List files or folder."
+    echo  "     $(basename $0)  ls  s3://<game_name>/host_name/path"
+    echo  -e "\n  List folders recursively."
+    echo  "     $(basename $0)  la  s3://<game_name>/host_name/path/"
+    echo  -e "\n  Download a file."
+    echo  "     $(basename $0)  get  s3://<game_name>/host_name/path"
+    echo  "     $(basename $0)  get  s3://<game_name>/host_name/path  <file>"
+    echo  -e "\n  Upload a file."
+    echo  "     $(basename $0)  put  <file> s3://<game_name>/host_name/path"
+    echo  -e "\n  Delete file."
+    echo  "     $(basename $0)  del  s3://<game_name>/host_name/path"
+    echo  -e "\n  Sync file."
+    echo  "     $(basename $0)  sync  source destination"
+    echo  -e "\n"
     exit 1
 }
 
