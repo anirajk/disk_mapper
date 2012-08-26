@@ -5,6 +5,8 @@ This module maps request to function based on the url and method
 import os
 import glob
 import hashlib
+import json
+from cgi import parse_qs
 
 
 class StorageServer:
@@ -32,6 +34,75 @@ class StorageServer:
 
         self._start_response()
         return [files + "\n"]
+
+    def get_file(self):
+        self.status = '202 Accepted'
+        files = []
+
+        if "type=bad_disk" in self.query_string:
+            files = "/var/tmp/disk_mapper/bad_disk"
+        elif "type=dirty_files" in self.query_string:
+            file_name = "dirty"
+        elif "type=copy_completed" in self.query_string:
+            file_name = "copy_completed"
+        else:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid file type"
+
+        if "type=dirty_files"  in self.query_string or "type=copy_completed" in self.query_string:
+            for partition_name in sorted(glob.glob('/var/www/html/membase_backup/partition_*')):
+                files.append(partition_name + "/" + file_name)
+
+        file_content = ""
+        for file in files:
+            if os.path.exists(file):
+                f = open (file, "r") 
+                file_content = file_content + f.read()
+                f.close()
+
+        self._start_response()
+        return file_content
+
+    def get_config(self):
+        self.status = '202 Accepted'
+        mapping = {}
+        path = "/var/www/html/membase_backup/"
+        for disk in sorted(os.listdir(path)):
+            disk_path = os.path.join(path, disk)
+            if os.path.isdir(disk_path):
+                for type in  os.listdir(disk_path):
+                    if type == "primary" or type == "secondary":
+                        type_path = os.path.join(disk_path, type)
+                        print type_path
+                        if os.path.isdir(type_path):
+                            for host_name in os.listdir(type_path):
+                                mapping[host_name] = {"type" : type, "disk" : disk}
+
+        self._start_response()
+        return json.dumps(mapping)
+
+    def initialize_host(self):
+        self.status = '202 Accepted'
+        qs = parse_qs(self.query_string)
+        host_name =  qs["host_name"][0]
+        type =  qs["type"][0]
+        game_id =  qs["game_id"][0]
+        disk =  qs["disk"][0]
+
+        actual_path = os.path.join("/", disk, type, host_name)
+        if not os.path.isdir(actual_path):
+            os.makedirs(actual_path)
+        
+        document_root = self.environ["DOCUMENT_ROOT"]
+        sym_link_name = os.path.join(document_root, game_id, host_name)
+        sym_link_path = os.path.join(document_root, "membase_backup", disk, type, host_name)
+        if not os.path.islink(sym_link_name):
+            os.symlink(sym_link_path, sym_link_name)
+
+        self.status = '201 Created'
+        self._start_response()
+        return qs
 
     def save_to_disk(self):
         self.status = '200 OK'
@@ -95,7 +166,7 @@ class StorageServer:
     def _is_host_initialized(self, path):
         subfolders = path.split('/')
         document_root = self.environ["DOCUMENT_ROOT"]
-        host_folder = document_root + "/" + subfolders[1] + "/" + subfolders[2]
+        host_folder = os.path.join(document_root, subfolders[1], subfolders[2])
         if os.path.isdir(host_folder):
             return True
         return False

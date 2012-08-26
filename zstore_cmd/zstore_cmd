@@ -65,7 +65,7 @@ list () {
     # Construct url based on remote path.
     url=$(getUrlPrefix $path)
     
-    url="$url?list=true"
+    url="$url?action=list"
     [[ $RECURSIVE = "true" ]] && url="$url&recursive=true"
 
     # Execute curl
@@ -104,7 +104,7 @@ download () {
     # Create directory if directory does not exist.
     [ -d "$dir_path" ] || mkdir -p "$dir_path"
 
-    remote_hash=$(curl -sfiL --connect-timeout 60 --max-time 900 "$url?list=true" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    remote_hash=$(curl -sfiL --connect-timeout 60 --max-time 900 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
 
     # If local file exists and  md5hash of local and remote file match do not download again.
     [[ -f $file_path ]] && verified=$(verifyFile $remote_hash $file_path) 
@@ -156,7 +156,7 @@ upload () {
     # If remote path does not have file name, append file name to remote path
     [[ ${url: -1} = "/" ]] && file_name=$(basename $file_path) && url="$url$file_name"
 
-    remote_hash=$(curl -siL --connect-timeout 60 --max-time 900 "$url?list=true" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    remote_hash=$(curl -siL --connect-timeout 60 --max-time 900 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
 
     # If local file exists and md5hash of local and remote file match do not upload again.
     [[ $remote_hash != '' ]] && verified=$(verifyFile "$remote_hash" $file_path) 
@@ -167,7 +167,7 @@ upload () {
     [[ $? -ne 0 ]] && exit 1
 
     # Check if md5hash of local and remote file match.
-    remote_hash=$(curl -siL --connect-timeout 60 --max-time 900 "$url?list=true" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    remote_hash=$(curl -siL --connect-timeout 60 --max-time 900 "$url?action=true" | grep Etag | sed 's/Etag: //' | tr -d \\r)
     verified=$(verifyFile $remote_hash $file_path)
     exit $verified
 }
