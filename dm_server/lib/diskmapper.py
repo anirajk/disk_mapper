@@ -12,7 +12,9 @@ import pickle
 import pycurl
 import cStringIO
 import thread
+import socket
 import logging
+import subprocess
 from config import config
 from cgi import parse_qs
 
@@ -21,13 +23,14 @@ hdlr = logging.FileHandler('/var/log/disk_mapper.log')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
-logger.setLevel(logging.WARNING)
-
+logger.setLevel(logging.DEBUG)
 
 class DiskMapper:
 
     def __init__(self, environ, start_response):
         self.mapping_file = '/var/tmp/disk_mapper/host.mapping'
+        self.swap_disk_thread_count = 0
+        self.bad_servers = []
         if environ != None:
             self.environ  = environ
             self.query_string  = environ["QUERY_STRING"]
@@ -69,7 +72,40 @@ class DiskMapper:
         self._start_response()
         return str(url)
 
-    
+    def get_host_config(self):
+        self.status = '202 Accepted'
+
+        mapping = self._get_mapping ("host")
+        host_config = {}
+
+        if mapping == False:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "No host found"
+
+        for host_name in mapping:
+            status = None
+            host_config[host_name] = {}
+            if "primary" in mapping[host_name].keys():
+                storage_server = mapping[host_name]["primary"]["storage_server"]
+                disk = mapping[host_name]["primary"]["disk"]
+                status = mapping[host_name]["primary"]["status"]
+                
+
+            if status == "bad" or status == None:
+                if "secondary" in mapping[host_name].keys():
+                    storage_server = mapping[host_name]["secondary"]["storage_server"]
+                    disk = mapping[host_name]["secondary"]["disk"]
+                    status = mapping[host_name]["secondary"]["status"]
+                    if status == "bad":
+                        continue
+
+        host_config[host_name].update({"storage_server" : storage_server, "disk" : disk})
+
+        self.status = '200 OK'
+        self._start_response()
+        return json.dumps(host_config)
+
     def upload(self):
 
         self.status = '202 Accepted'
@@ -122,21 +158,18 @@ class DiskMapper:
         return False
 
     def swap_bad_disk(self, storage_servers=None):
-        swap_all_disk = True
-        if storage_servers == None:
-            swap_all_disk = False
-            storage_servers = config['storage_server']
-
+        storage_servers = config['storage_server']
         self.swap_disk_thread_count = 0
         for storage_server in storage_servers:
             self.swap_disk_thread_count = self.swap_disk_thread_count + 1
-            thread.start_new_thread(self.poll_bad_file, (storage_server, swap_all_disk))
+            thread.start_new_thread(self.poll_bad_file, (storage_server,))
 
         while self.swap_disk_thread_count > 0:
             pass
 
     def poll_bad_file(self, storage_server, swap_all_disk=False):
         # TODO try this entire function and reduce thread count
+        logger.debug ("Started poll_bad_file for " + storage_server + " with swap_all_disk = " + str(swap_all_disk))
         
         if swap_all_disk == False:
             server_config = self._get_server_config(storage_server)
@@ -152,6 +185,8 @@ class DiskMapper:
                 return False
         else:
             server_config = self._get_mapping("storage_server",storage_server)
+            if server_config == False:
+                return True
 
         for disk in server_config:
             status = "bad"
@@ -161,6 +196,8 @@ class DiskMapper:
 
             if status == "bad":
                 for type in server_config[disk]:
+                    if type == "status":
+                        continue
                     host_name = server_config[disk][type]
                     self._update_mapping(storage_server, disk, type, host_name, status)
                     if host_name != "spare":
@@ -292,7 +329,7 @@ class DiskMapper:
             return False
 
         for disk in server_config:
-            if disk in bad_disks:
+            if disk in bad_disks or storage_server in self.bad_servers:
                 status = "bad"
             else:
                 status = "good"
@@ -302,6 +339,44 @@ class DiskMapper:
                     
         self.ini_dm_thread_count = self.ini_dm_thread_count - 1
 
+    def is_dm_active(self):
+        zrt = config["zruntime"]
+        url = os.path.join ('https://api.runtime.zynga.com:8994/', zrt["gameid"], zrt["env"], "current")
+        value = self._curl(url, 200, True)
+        if value != False:
+            value = json.loads(value)
+        active_dm = value["output"][zrt["mcs_key_name"]]
+        ip = socket.gethostbyname(socket.gethostname())
+        if active_dm == ip:
+            return True
+        return False
+
+        
+    def make_spare(self, storage_server):
+        server_config = self._get_server_config(storage_server)
+        if server_config == False:
+            logger.error("Failed to get config from storage server: " + storage_server)
+            return False
+
+        for disk in server_config:
+            for type in server_config[disk]:
+                if storage_server not in self.bad_servers:
+                    return None
+
+                if type == "primary" or type == "secondary":
+                    host_name = server_config[disk][type]
+                    if host_name == "spare":
+                        continue
+
+                    host_mapping = self._get_server_config("host", host_name)
+                    if host_mapping == False:
+                        continue
+
+                    if storage_server ==  host_mapping["storage_server"]:
+                        continue
+
+                    self._make_spare(storage_server, type, disk)
+                    
     def _create_torrent(self, storage_server, file):
         # http://netops-demo-mb-220.va2/api/membase_backup?action=create_torrent&file_path=/data_2/primary/empire-mb-user-b-001/zc1/incremental/test1/
         url = 'http://' + storage_server + '/api?action=create_torrent&file_path=' + file
@@ -321,6 +396,14 @@ class DiskMapper:
     def _remove_entry(self, storage_server, entry, file_type):
         # http://netops-demo-mb-220.va2/api/membase_backup?action=remove_entry&type=bad_disk&entry=%22/data_1%22
         url = 'http://' + storage_server + '/api?action=remove_entry&entry=' + entry.rstrip() + '&type=' + file_type
+        value = self._curl(url, 200)
+        if value != False:
+            return True
+        return False
+
+    def _make_spare(self, storage_server, type, disk):
+        # http://10.36.168.173/api?action=make_spare&type=primary&disk=data_1
+        url = 'http://' + storage_server + '/api?action=make_spare&type=' + type + '&disk=' + disk
         value = self._curl(url, 200)
         if value != False:
             return True
@@ -364,17 +447,25 @@ class DiskMapper:
             return json.loads(value)
         return False
         
-    def _curl (self, url, exp_return_code=None):
+    def _curl (self, url, exp_return_code=None, insecure=False):
         buf = cStringIO.StringIO()
+        storage_server = url.split("/")[2]
         c = pycurl.Curl()
         c.setopt(c.URL, str(url))
+        if insecure == True:
+            c.setopt(pycurl.SSL_VERIFYPEER,0)
+            zrt = config["zruntime"]
+            c.setopt(pycurl.USERPWD, zrt["username"] + ":" + zrt["password"])
+
         c.setopt(c.WRITEFUNCTION, buf.write)
         try:
             c.perform()
+            if storage_server in self.bad_servers:
+                self.make_spare(storage_server)
+                self.bad_servers.remove(storage_server)
         except pycurl.error, error :
             errno, errstr = error
             if errno == 7:
-                storage_server = url.split("/")[2]
                 self._check_server_conn(storage_server)
             return False
 
@@ -391,16 +482,19 @@ class DiskMapper:
         c.setopt(c.URL, str(url))
         for retry in range(3):
             try:
-                time.sleep(5)
+                #time.sleep(5)
                 c.perform()
             except pycurl.error, error:
-                errno, errstr = erro
+                errno, errstr = error
                 if errno == 7:
                     logger.error("Failed to connect to " + storage_server)
             else:
               break
         else:
-            self.swap_bad_disk(storage_server)
+            if storage_server not in self.bad_servers:
+                self.bad_servers.append(storage_server)
+            self.swap_disk_thread_count = self.swap_disk_thread_count + 1
+            self.poll_bad_file(storage_server, True)
 
     def _is_diskmapper_initialized(self):
         if not os.path.exists(self.mapping_file):
@@ -429,7 +523,7 @@ class DiskMapper:
         spare_mapping["primary"] = []
         spare_mapping["secondary"] = []
         for storage_server in mapping:
-            if storage_server == skip:
+            if storage_server == skip or storage_server in self.bad_servers:
                 continue
             for disk in mapping[storage_server]:
                 for disk_type in mapping[storage_server][disk]:
