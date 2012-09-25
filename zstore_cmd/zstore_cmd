@@ -1,10 +1,13 @@
 #!/bin/bash
-
+#
 # Functions used.
 main () {
 
     STORAGE_SERVER=""
-
+    DEBUG=false
+    
+    CURL_PARAM=""
+    [[ $DEBUG == false ]] && CURL_PARAM="-sf" 
     # Route to function depending on command. Defaults to usage.
     case "$1" in
         get)
@@ -69,7 +72,7 @@ list () {
     [[ $RECURSIVE = "true" ]] && url="$url&recursive=true"
 
     # Execute curl
-    curl -sfL --connect-timeout 60 --max-time 900 "$url" 
+    curl $CURL_PARAM -L --connect-timeout 60 --max-time 900 "$url" 
     exit $?
 }
 
@@ -104,7 +107,7 @@ download () {
     # Create directory if directory does not exist.
     [ -d "$dir_path" ] || mkdir -p "$dir_path"
 
-    remote_hash=$(curl -sfiL --connect-timeout 60 --max-time 900 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    remote_hash=$(curl $CURL_PARAM -iL --connect-timeout 60 --max-time 900 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
 
     # If local file exists and  md5hash of local and remote file match do not download again.
     [[ -f $file_path ]] && verified=$(verifyFile $remote_hash $file_path) 
@@ -146,9 +149,9 @@ upload () {
 
     file_path=$2
     path=$3
-    game_name=$(getGameName $path)
+    #game_name=$(getGameName $path)
     [[ ! -f $file_path ]] && exit 1
-    [[ -z $game_name ]] && echo "Invalid Game Name" && exit 1
+    #[[ -z $game_name ]] && echo "Invalid Game Name" && exit 1
 
     # Construct url based on remote path.
     url=$(getUrlPrefix $path)
@@ -156,18 +159,19 @@ upload () {
     # If remote path does not have file name, append file name to remote path
     [[ ${url: -1} = "/" ]] && file_name=$(basename $file_path) && url="$url$file_name"
 
-    remote_hash=$(curl -siL --connect-timeout 60 --max-time 900 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    remote_hash=$(curl $CURL_PARAM -iL --connect-timeout 60 --max-time 900 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
 
     # If local file exists and md5hash of local and remote file match do not upload again.
     [[ $remote_hash != '' ]] && verified=$(verifyFile "$remote_hash" $file_path) 
     [[ -n $verified ]] && [[ $verified -eq 0 ]] && exit 0
     
+    actual_url=$(curl $CURL_PARAM --connect-timeout 60 --max-time 900 --request "POST" "$url")
     # Execute curl
-    curl -sfL --connect-timeout 60 --max-time 900 --request "POST" --data-binary "@$file_path" "$url"
+    curl $CURL_PARAM -L --connect-timeout 60 --max-time 900 --request "POST" --data-binary "@$file_path" "$actual_url"
     [[ $? -ne 0 ]] && exit 1
 
     # Check if md5hash of local and remote file match.
-    remote_hash=$(curl -siL --connect-timeout 60 --max-time 900 "$url?action=true" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    remote_hash=$(curl $CURL_PARAM -iL --connect-timeout 60 --max-time 900 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
     verified=$(verifyFile $remote_hash $file_path)
     exit $verified
 }
@@ -183,7 +187,7 @@ delete () {
     url=$(getUrlPrefix $path)
 
     # Execute curl
-    curl -sfL --connect-timeout 60 --max-time 900 -X "DELETE" "$url"
+    curl $CURL_PARAM -L --connect-timeout 60 --max-time 900 -X "DELETE" "$url"
     exit $?
 }
 
@@ -194,7 +198,6 @@ getUrlPrefix () {
     #[[ -z $game_name ]] && echo "Invalid Game Name" && exit 1
     #url_path=$(expr "$path" : 's3://[a-zA-Z0-9\.]*/[a-zA-Z]*/\(.*\)') 
     #[[ -z $url_path ]]  && exit 1
-        #url="$game_name.$STORAGE_SERVER/?path=$game_name:$url_path"
     #echo $url
     echo $path | sed  's#^s3://#http://#' | sed 's/\(\/\/[a-zA-Z0-9\.]*\/\)/\1api\//'
 }

@@ -26,14 +26,32 @@ def index(environ, start_response):
         if "list" in action:
             return ss.list()
 
+        if "add_entry" in action:
+            return ss.add_entry()
+
+        if "remove_entry" in action:
+            return ss.remove_entry()
+
         if "get_file" in action:
             return ss.get_file()
+
+        if "get_mtime" in action:
+            return ss.get_mtime()
+
+        if "make_spare" in action:
+            return ss.make_spare()
 
         if "get_config" in action:
             return ss.get_config()
 
         if "initialize_host" in action:
             return ss.initialize_host()
+
+        if "create_torrent" in action:
+            return ss.create_torrent()
+
+        if "start_download" in action:
+            return ss.start_download()
 
     start_response('200 OK', [('Content-type', 'text/plain')])
     return redirect(environ, start_response)

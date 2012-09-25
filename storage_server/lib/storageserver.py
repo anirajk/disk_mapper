@@ -6,6 +6,8 @@ import os
 import glob
 import hashlib
 import json
+import fcntl
+import time
 from cgi import parse_qs
 
 
@@ -35,12 +37,11 @@ class StorageServer:
         self._start_response()
         return [files + "\n"]
 
-    def get_file(self):
+    def add_entry(self):
         self.status = '202 Accepted'
-        files = []
 
         if "type=bad_disk" in self.query_string:
-            files = "/var/tmp/disk_mapper/bad_disk"
+            file = "/var/tmp/disk_mapper/bad_disk"
         elif "type=dirty_files" in self.query_string:
             file_name = "dirty"
         elif "type=copy_completed" in self.query_string:
@@ -50,37 +51,260 @@ class StorageServer:
             self._start_response()
             return "Invalid file type"
 
+        qs = parse_qs(self.query_string)
+        try:
+            entry =  qs["entry"][0]
+        except KeyError:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid arguments."
+
         if "type=dirty_files"  in self.query_string or "type=copy_completed" in self.query_string:
-            for partition_name in sorted(glob.glob('/var/www/html/membase_backup/partition_*')):
-                files.append(partition_name + "/" + file_name)
+            for partition_name in sorted(glob.glob('/var/www/html/membase_backup/data_*')):
+                file = partition_name + "/" + file_name
+                self._append_to_file(file, entry)
+        else:
+            self._append_to_file(file, entry)
+
+        self.status = '200 OK'
+        self._start_response()
+        return "Successfully add entry to file."
+
+    def remove_entry(self):
+        self.status = '202 Accepted'
+
+        if "type=bad_disk" in self.query_string:
+            file = "/var/tmp/disk_mapper/bad_disk"
+        elif "type=dirty_files" in self.query_string:
+            file_name = "dirty"
+        elif "type=copy_completed" in self.query_string:
+            file_name = "copy_completed"
+        else:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid file type"
+
+        qs = parse_qs(self.query_string)
+        try:
+            entry =  qs["entry"][0]
+        except KeyError:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid arguments."
+
+        if "type=dirty_files"  in self.query_string or "type=copy_completed" in self.query_string:
+            for partition_name in sorted(glob.glob('/var/www/html/membase_backup/data_*')):
+                file = partition_name + "/" + file_name
+                self._remove_line_from_file(file, entry)
+        else:
+            self._remove_line_from_file(file, entry)
+        
+        self.status = '200 OK'
+        self._start_response()
+        return "Successfully removed entry from file."
+
+    def _remove_line_from_file(self, file, entry):
+	if not os.path.exists(file):
+            return True
+	
+        f = open(file, 'r+')
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        file_content = f.readlines()
+        entry_string = entry + "\\n"
+        
+        f.seek(0, 0)
+        f.truncate()
+        for line in file_content:
+            if entry not in line:
+                f.write(line)
+        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        f.close()
+
+    def get_file(self):
+        self.status = '202 Accepted'
+
+        if "type=bad_disk" in self.query_string:
+            file = "/var/tmp/disk_mapper/bad_disk"
+        elif "type=dirty_files" in self.query_string:
+            file_name = "dirty"
+        elif "type=copy_completed" in self.query_string:
+            file_name = "copy_completed"
+        else:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid file type"
 
         file_content = ""
-        for file in files:
+        if "type=dirty_files"  in self.query_string or "type=copy_completed" in self.query_string:
+            for partition_name in sorted(glob.glob('/var/www/html/membase_backup/data_*')):
+                file = partition_name + "/" + file_name
+
+                if os.path.exists(file):
+                    f = open (file, "r") 
+                    file_content = file_content + f.read() + "\n"
+                    f.close()
+        else:
             if os.path.exists(file):
                 f = open (file, "r") 
                 file_content = file_content + f.read()
                 f.close()
 
+
+        self.status = '200 OK'
         self._start_response()
-        return file_content
+        return json.dumps(file_content)
+
+    def make_spare(self):
+        self.status = '202 Accepted'
+        qs = parse_qs(self.query_string)
+        try:
+            type =  qs["type"][0]
+            disk =  qs["disk"][0]
+        except KeyError:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid arguments."
+            
+        path = os.path.join("/var/www/html/membase_backup/", disk, type)
+
+        if not self._delete_file_folder(path):
+            self.status = "400 Bad Request"
+        
+        document_root = self.environ["DOCUMENT_ROOT"]
+
+        for subfolders in os.listdir(document_root):
+            full_path = os.path.join(document_root, subfolders)
+            if os.path.isdir(full_path):
+                for file in os.listdir(full_path):
+                    link = os.path.join(full_path, file)
+                    if os.path.islink(link):
+                        if os.path.join(disk, type) in os.readlink(link):
+                            os.remove(link)
+                
+        self.status = "200 OK"
+        self._start_response()
+        return disk + "/" + type + " is a spare"
+
+    def get_mtime(self):
+        self.status = '202 Accepted'
+        qs = parse_qs(self.query_string)
+        try:
+            host_name =  qs["host_name"][0]
+            type =  qs["type"][0]
+            disk =  qs["disk"][0]
+        except KeyError:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid arguments."
+            
+        mapping = {}
+        path = os.path.join("/var/www/html/membase_backup/", disk, type)
+        
+        if os.path.isdir(path):
+            last_mtime = 0
+            for root, dirs, files in os.walk(path, topdown=False, followlinks=True):
+                for name in files:
+                    mtime = os.path.getmtime(os.path.join(root, name))
+                    if mtime > last_mtime: last_mtime = mtime
+                for name in dirs:
+                    mtime = os.path.getmtime(os.path.join(root, name))
+                    if mtime > last_mtime: last_mtime = mtime
+
+        self.status = "200 OK"
+        self._start_response()
+        return str(last_mtime)
 
     def get_config(self):
         self.status = '202 Accepted'
         mapping = {}
         path = "/var/www/html/membase_backup/"
         for disk in sorted(os.listdir(path)):
+            mapping[disk] = {}
             disk_path = os.path.join(path, disk)
             if os.path.isdir(disk_path):
                 for type in  os.listdir(disk_path):
                     if type == "primary" or type == "secondary":
                         type_path = os.path.join(disk_path, type)
-                        print type_path
                         if os.path.isdir(type_path):
-                            for host_name in os.listdir(type_path):
-                                mapping[host_name] = {"type" : type, "disk" : disk}
 
+                            if os.listdir(type_path) == []:
+                                mapping[disk].update({type : "spare"})
+                            else:
+                                for host_name in os.listdir(type_path):
+                                    mapping[disk].update({type : host_name})
+
+        self.status = '200 OK'
         self._start_response()
         return json.dumps(mapping)
+
+    def start_download(self):
+
+        self.status = '202 Accepted'
+
+        qs = parse_qs(self.query_string)
+        try:
+            file_path =  qs["file_path"][0]
+            torrent_url =  qs["torrent_url"][0]
+        except KeyError:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid arguments."
+
+        # aria2c --dir=/mydownloads --follow-torrent=mem --seed-time=0 --remove-control-file http://10.36.168.173/torrent/1347780080.torrent
+        cmd = 'aria2c --dir=' + os.path.dirname(file_path + "/../")  + ' --follow-torrent=mem --seed-time=0 --bt-stop-timeout=300 --remove-control-file ' + torrent_url
+        self.status = '500 Internal Server Error'
+        if os.system(cmd):
+            print cmd
+            self._start_response()
+            return "Failed to start download."
+
+        cmd1 = "zstore_cmd del " + torrent_url.replace("http://", "s3://") 
+        if os.system(cmd1):
+            print cmd1
+            self._start_response()
+            return "Failed to remove torrent file."
+
+        self.status = '200 OK'
+        self._start_response()
+        return "Sucessfully downloaded file."
+
+    def create_torrent(self):
+        self.status = '202 Accepted'
+
+        qs = parse_qs(self.query_string)
+        try:
+            file_path =  qs["file_path"][0]
+        except KeyError:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid arguments."
+        torrent_folder = "/var/www/html/torrent"
+
+        if not os.path.exists(torrent_folder):
+            os.makedirs(torrent_folder)
+
+        torrent_file_name = time.strftime('%s') + ".torrent"
+        torrent_path = os.path.join(torrent_folder, torrent_file_name)
+        # btmakemetafile.py http://10.34.231.215:6969/announce /home/sqadir/backup/ --target "/tmp/back_up.torrent"
+        cmd = 'btmakemetafile.py http://' + self.environ["SERVER_ADDR"] + ':6969/announce ' + file_path + ' --target ' + torrent_path
+        if os.system(cmd):
+            print cmd
+            self.status = '500 Internal Server Error'
+            self._start_response()
+            return "Failed to create torrent."
+
+        # aria2c -V --dir=/home/sqadir /var/www/html/torrent/bit.torrent --seed-ratio=1.0
+        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path + "/../") + " " + torrent_path + " --seed-ratio=1.0 -D --remove-control-file --bt-stop-timeout=300"
+        if os.system(cmd1):
+            print cmd1
+            self.status = '500 Internal Server Error'
+            self._start_response()
+            return "Failed to seed file."
+
+        self.status = '200 OK'
+        self._start_response()
+        torrent_loc = 'http://' + torrent_path.replace(self.environ["DOCUMENT_ROOT"], self.environ["SERVER_ADDR"])
+        return torrent_loc
 
     def initialize_host(self):
         self.status = '202 Accepted'
@@ -97,12 +321,17 @@ class StorageServer:
         document_root = self.environ["DOCUMENT_ROOT"]
         sym_link_name = os.path.join(document_root, game_id, host_name)
         sym_link_path = os.path.join(document_root, "membase_backup", disk, type, host_name)
-        if not os.path.islink(sym_link_name):
-            os.symlink(sym_link_path, sym_link_name)
+
+        if not os.path.isdir(os.path.dirname(sym_link_name)):
+            os.makedirs(os.path.dirname(sym_link_name))
+
+        if os.path.islink(sym_link_name):
+            os.remove(sym_link_name)   
+        os.symlink(sym_link_path, sym_link_name)
 
         self.status = '201 Created'
         self._start_response()
-        return qs
+        return "Host initialized"
 
     def save_to_disk(self):
         self.status = '200 OK'
@@ -118,7 +347,11 @@ class StorageServer:
         file_size = int(self.environ.get('CONTENT_LENGTH','0'))
         chunks = file_size / block_size
         last_chunk_size = file_size % block_size
-    
+
+        dir_name = os.path.dirname(path)
+        if not os.path.exists(dir_name):
+            os.makedirs(dir_name)
+
         f = open(path,'wb')
         while chunks is not 0:
             file_chunk = self.environ['wsgi.input'].read(4096)
@@ -129,8 +362,24 @@ class StorageServer:
         f.write(file_chunk)
         f.close()
 
+        document_root = self.environ["DOCUMENT_ROOT"]
+        splits =  path_info.split("/")
+	host_symlink = os.path.join(document_root, splits[1], splits[2])
+	host_path = os.readlink(host_symlink)
+	actual_path_prefix = host_path.replace("/var/www/html/membase_backup", "")
+	actual_path = path.replace(host_symlink, actual_path_prefix)
+        dirty_file = os.path.join(host_symlink, "..", "..", "dirty")
+        self._append_to_file(dirty_file, os.path.dirname(actual_path))
+
         self._start_response()
         return ["Saved file to disk"]
+
+    def _append_to_file(self, file, line):
+        f = open(file, 'a+')
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        f.write(line + "\n")
+        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+        f.close()    
 
     def delete(self):
         self.status = '202 Accepted'
@@ -146,24 +395,33 @@ class StorageServer:
             self._start_response()
             return ["No permission to delete file."]
 
-        if os.path.isdir(path):
-            for root, dirs, files in os.walk(path, topdown=False, followlinks=True):
-                for name in files:
-                    os.remove(os.path.join(root, name))
-                for name in dirs:
-                    os.rmdir(os.path.join(root, name))
-        else:
-            os.remove(path)
-
-        if os.path.exists(path):
-            self.status = '400 Bad Request'
-        else:
+        if self._delete_file_folder(path):
             self.status = '200 OK'
+        else:
+            self.status = '400 Bad Request'
             
         self._start_response()
         return ["Deleted " + self.environ["SERVER_NAME"] + self.environ["PATH_INFO"]]
 
-    def _is_host_initialized(self, path):
+
+    def _delete_file_folder(self, path):
+        try:
+            if os.path.isdir(path):
+                for root, dirs, files in os.walk(path, topdown=False, followlinks=True):
+                    for name in files:
+                        os.remove(os.path.join(root, name))
+                    for name in dirs:
+                        os.rmdir(os.path.join(root, name))
+            else:
+                os.remove(path)
+
+            if os.path.exists(path):
+                return False
+            return True
+        except:
+            return False
+
+    def _is_host_initialized(self, path, create=False):
         subfolders = path.split('/')
         document_root = self.environ["DOCUMENT_ROOT"]
         host_folder = os.path.join(document_root, subfolders[1], subfolders[2])
