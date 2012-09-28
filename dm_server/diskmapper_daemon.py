@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
-import sys, time
+import sys
 import time
 import logging
 from lib.diskmapper import DiskMapper
 from lib.daemon import Daemon
+
+import logging
 
 logger = logging.getLogger('disk_mapper')
 hdlr = logging.FileHandler('/var/log/disk_mapper.log')
@@ -18,6 +20,7 @@ class MyDaemon(Daemon):
 
         dm = DiskMapper(None, None)
 
+        logger.setLevel(logging.INFO)
         logger.info("Initializing...")
         dm.initialize_diskmapper()
         while True:

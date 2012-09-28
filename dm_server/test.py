@@ -17,5 +17,7 @@ while True:
 
     print "Polling storage server for config."
     dm.initialize_diskmapper(True)
-    #print dm._get_mapping("storage_server")
+    print dm._get_mapping("storage_server")
+    print "==="
+    print dm._get_mapping("host")
     #time.sleep(10)

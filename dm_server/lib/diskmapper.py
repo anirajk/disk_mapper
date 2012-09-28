@@ -43,23 +43,30 @@ class DiskMapper:
         path = self.environ["PATH_TRANSLATED"]
         request_uri = self.environ["REQUEST_URI"]
 
+        logger.debug("Redirect request : " + request_uri)
         host_name =  path.split("/")[5]
         mapping = self._get_mapping ("host", host_name)
             
         if mapping == False:
-            self.status = '400 Bad Request'
+            logger.error("Failed to get mapping for : " + host_name)
+            self.status = '200 OK'
             self._start_response()
             return "Host name " + host_name + " not found in mapping."
             
         status = None
         if "primary" in mapping.keys():
+            logger.info("Found primary for " + host_name)
             storage_server = mapping["primary"]["storage_server"]
             status = mapping["primary"]["status"]
+            logger.debug("Primary mapping : " + str(mapping["primary"]))
 
         if status == "bad" or status == None:
+            logger.info("Primary disk is bad.")
             if "secondary" in mapping.keys():
+                logger.info("Found secondary for " + host_name)
                 storage_server = mapping["secondary"]["storage_server"]
                 status = mapping["secondary"]["status"]
+                logger.debug("Secondary mapping : " + str(mapping["secondary"]))
                 if status == "bad":
                     logger.error("Both primary and secondary are bad disks.")
                     self.status = '412 Precondition Failed'
@@ -67,6 +74,7 @@ class DiskMapper:
                     return "Both primary and secondary are bad disks."
             
         url = 'http://' + storage_server + request_uri
+        logger.info("Request redirected to : " + str(url))
         self.status = '302 FOUND'
         self.response_headers.append(("Location", str(url)))
         self._start_response()
@@ -79,6 +87,7 @@ class DiskMapper:
         host_config = {}
 
         if mapping == False:
+            logger.error("Failed to get host mapping.")
             self.status = '400 Bad Request'
             self._start_response()
             return "No host found"
@@ -100,32 +109,39 @@ class DiskMapper:
                     if status == "bad":
                         continue
 
-        host_config[host_name].update({"storage_server" : storage_server, "disk" : disk})
+            host_config[host_name].update({"storage_server" : storage_server, "disk" : disk})
 
         self.status = '200 OK'
         self._start_response()
+        logger.debug("Mapping : " + str(host_config))
         return json.dumps(host_config)
 
     def upload(self):
-
+        
         self.status = '202 Accepted'
         path = self.environ["PATH_TRANSLATED"]
         request_uri = self.environ["REQUEST_URI"]
+        logger.debug("Upload request : " + path)
 
         if not self._is_diskmapper_initialized():
+            logger.info("Disk Mapper is not initialized.")
             self.initialize_diskmapper()
 
         host_name =  path.split("/")[5]
         game_id =  path.split("/")[4]
 
         if not self._is_host_initialized(host_name):
+            logger.info("Host : " + host_name + " is not initialized.")
+            logger.info("Initializing primary for " + host_name)
             self.initialize_host(host_name, "primary", game_id)
+            logger.info("Initializing secondary for " + host_name)
             self.initialize_host(host_name, "secondary", game_id)
 
         return self.forward_request()
 
     def initialize_host(self, host_name, type, game_id, update_mapping=True):
         
+        logger.debug("Initialize host : " + host_name + " " + type + " " + game_id + " " + str(update_mapping))
         mapping = self._get_mapping("host", host_name)
 
         skip_storage_server = None
@@ -133,12 +149,15 @@ class DiskMapper:
             if type == "primary" and "secondary" in mapping.keys():
                 if mapping["secondary"]["status"] != "bad":
                     skip_storage_server =  mapping["secondary"]["storage_server"]
+                    logger.info("Skip server : " + skip_storage_server)
 
             if type == "secondary" and "primary" in mapping.keys():
                 if mapping["primary"]["status"] != "bad":
                     skip_storage_server =  mapping["primary"]["storage_server"]
+                    logger.info("Skip server : " + skip_storage_server)
         
         spare = self._get_spare(type, skip_storage_server)
+        logger.debug("spare : " + str(spare))
         if spare == False:
             logger.error(type + " spare not found for " + host_name)
             return False
@@ -147,8 +166,8 @@ class DiskMapper:
         spare_disk  = spare["disk"]
         spare_config = self._get_server_config(spare_server)
         if spare_config[spare_disk][type] != "spare":
+            logger.debug("Spare disk is no more a spare.")
             return False
-            #return self.initialize_host(host_name, type, game_id)
 
         if self._initialize_host(spare_server, host_name, type, game_id, spare_disk, update_mapping) != False:
             if update_mapping == False:
@@ -426,11 +445,15 @@ class DiskMapper:
         
     def _initialize_host(self, storage_server, host_name, type, game_id, disk, update_mapping=True):
         url = 'http://' + storage_server + '/api?action=initialize_host&host_name=' + host_name + '&type=' + type + '&game_id=' + game_id + '&disk=' + disk
+        logger.debug("Initial request url : " + str(url))
         value = self._curl(url, 201)
         if value != False:
+            logger.info("Initialized " + host_name + "at " + storage_server + ":/" + disk + "/" + type)
             if update_mapping == True:
+                logger.info("Updating mapping.")
                 self._update_mapping(storage_server, disk, type, host_name)
             return True
+        logger.error("Failed to initialize " + host_name + " at " + storage_server + ":/" + disk + "/" + type)
         return False
 
     def _get_dirty_file(self, storage_server):
