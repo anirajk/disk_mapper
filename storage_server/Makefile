@@ -1,4 +1,3 @@
-__init__.py  Makefile  request_handler.py  storage-server.spec
 FILES=__init__.py\
  request_handler.py\
  lib/storageserver.py\
@@ -17,7 +16,7 @@ all:
 	@echo "What do you want me to do ?"
 
 tarball: 
-	tar -czvf zstore.tgz $(FILES)
+	tar -czvf storageserver.tgz $(FILES)
 
 rpm: tarball
-	rpmbuild -ta zstore.tgz
+	rpmbuild -ta storageserver.tgz

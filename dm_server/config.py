@@ -3,16 +3,16 @@
 config = {
     'storage_server': 
                     [
-                     '10.36.161.52',
-                     '10.36.175.21',
-                     '10.36.168.153',
+                     'server_1_ip',
+                     'server_2_ip',
+                     'server_3_ip',
                     ],
     'zruntime': 
               {'username' : 'membase', 
                'password' : 'm3mb@s3@p1t00l',
                'gameid' : 'membase',
                'env' : 'auto',
-               'mcs_key_name' : 'SQ_ACTIVE_MCS',
+               'mcs_key_name' : 'ACTIVE_MCS',
               },
 }
 

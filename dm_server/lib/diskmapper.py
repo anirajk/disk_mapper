@@ -11,7 +11,7 @@ import json
 import pickle
 import pycurl
 import cStringIO
-import thread
+import threading
 import socket
 import logging
 import subprocess
@@ -29,7 +29,6 @@ class DiskMapper:
 
     def __init__(self, environ, start_response):
         self.mapping_file = '/var/tmp/disk_mapper/host.mapping'
-        self.swap_disk_thread_count = 0
         self.bad_servers = []
         if environ != None:
             self.environ  = environ
@@ -178,29 +177,28 @@ class DiskMapper:
 
     def swap_bad_disk(self, storage_servers=None):
         storage_servers = config['storage_server']
-        self.swap_disk_thread_count = 0
+        jobs = []
         for storage_server in storage_servers:
-            self.swap_disk_thread_count = self.swap_disk_thread_count + 1
-            thread.start_new_thread(self.poll_bad_file, (storage_server,))
+            jobs.append(threading.Thread(target=self.poll_bad_file, args=(storage_server,)))
 
-        while self.swap_disk_thread_count > 0:
+        for j in jobs:
+            j.start()
+
+        while threading.activeCount() > 1:
             pass
 
     def poll_bad_file(self, storage_server, swap_all_disk=False):
-        # TODO try this entire function and reduce thread count
         logger.debug ("Started poll_bad_file for " + storage_server + " with swap_all_disk = " + str(swap_all_disk))
         
         if swap_all_disk == False:
             server_config = self._get_server_config(storage_server)
             if server_config == False:
                 logger.error("Failed to get config from storage server: " + storage_server)
-                self.swap_disk_thread_count = self.swap_disk_thread_count - 1
                 return False
 
             bad_disks = self._get_bad_disks(storage_server)
             if server_config == False:
                 logger.error("Failed to get bad disks form storage server: " + storage_server)
-                self.swap_disk_thread_count = self.swap_disk_thread_count - 1
                 return False
         else:
             server_config = self._get_mapping("storage_server",storage_server)
@@ -262,24 +260,24 @@ class DiskMapper:
                         else:
                             logger.error("Failed to start download to " + cp_to_server + ":" + cp_to_file)
 
-        self.swap_disk_thread_count = self.swap_disk_thread_count - 1
 
     def enable_replication(self):
         storage_servers = config['storage_server']
-        self.en_rep_thread_count = 0
-        for storage_server in storage_servers:
-            self.en_rep_thread_count = self.en_rep_thread_count + 1
-            thread.start_new_thread(self.poll_dirty_file, (storage_server,))
 
-        while self.en_rep_thread_count > 0:
+        jobs = []
+        for storage_server in storage_servers:
+            jobs.append(threading.Thread(target=self.poll_dirty_file, args=(storage_server,)))
+
+        for j in jobs:
+            j.start()
+
+        while threading.activeCount() > 1:
             pass
 
     def poll_dirty_file(self, storage_server):
-        # TODO try this entire function and reduce thread count
         dirty_file = self._get_dirty_file(storage_server)
         if dirty_file == False:
             logger.error("Failed to get dirty file from storage server: " + storage_server)
-            self.en_rep_thread_count = self.en_rep_thread_count - 1
             return False
 
         for file in set(dirty_file.split("\\n")):
@@ -290,7 +288,6 @@ class DiskMapper:
                 cp_from_type = cp_from_detail[2]
                 host_name = cp_from_detail[3]
             except IndexError:
-                self.en_rep_thread_count = self.en_rep_thread_count - 1
                 return True
 
             mapping = self._get_mapping("host", host_name)
@@ -305,13 +302,11 @@ class DiskMapper:
                 cp_to_file = file.replace(cp_from_disk,cp_to_disk).replace(cp_from_type, cp_to_type)
             except KeyError:
                 self._remove_entry(cp_from_server, file, "dirty_files")
-                self.en_rep_thread_count = self.en_rep_thread_count - 1
                 return True
 
             torrent_url = self._create_torrent(cp_from_server, file)
             if torrent_url == False:
                 logger.error("Failed to get torrent url for " + storage_server + ":" + file)
-                self.en_rep_thread_count = self.en_rep_thread_count - 1
                 return False
                 
             if self._start_download(cp_to_server, cp_to_file, torrent_url) == True:
@@ -319,32 +314,30 @@ class DiskMapper:
             else:
                 logger.error("Failed to start download to " + cp_to_server + ":" + cp_to_file)
 
-            self.en_rep_thread_count = self.en_rep_thread_count - 1
 
     def initialize_diskmapper(self, poll=False):
         if os.path.exists(self.mapping_file) and poll == False:
             os.remove(self.mapping_file)
         storage_servers = config['storage_server']
-        self.ini_dm_thread_count = 0
+        jobs = []
         for storage_server in storage_servers:
-            self.ini_dm_thread_count = self.ini_dm_thread_count + 1
-            thread.start_new_thread(self.update_server_config, (storage_server,))
+            jobs.append(threading.Thread(target=self.update_server_config, args=(storage_server,)))
 
-        while self.ini_dm_thread_count > 0:
+        for j in jobs:
+            j.start()
+
+        while threading.activeCount() > 1:
             pass
 
     def update_server_config(self, storage_server):
-        # TODO try this entire function and reduce thread count
         server_config = self._get_server_config(storage_server)
         if server_config == False:
             logger.error("Failed to get config from storage server: " + storage_server)
-            self.ini_dm_thread_count = self.ini_dm_thread_count - 1
             return False
 
         bad_disks = self._get_bad_disks(storage_server)
         if server_config == False:
             logger.error("Failed to get bad disks form storage server: " + storage_server)
-            self.ini_dm_thread_count = self.ini_dm_thread_count - 1
             return False
 
         for disk in server_config:
@@ -356,7 +349,6 @@ class DiskMapper:
                 host_name = server_config[disk][type]
                 self._update_mapping(storage_server, disk, type, host_name, status)
                     
-        self.ini_dm_thread_count = self.ini_dm_thread_count - 1
 
     def is_dm_active(self):
         zrt = config["zruntime"]
@@ -516,7 +508,6 @@ class DiskMapper:
         else:
             if storage_server not in self.bad_servers:
                 self.bad_servers.append(storage_server)
-            self.swap_disk_thread_count = self.swap_disk_thread_count + 1
             self.poll_bad_file(storage_server, True)
 
     def _is_diskmapper_initialized(self):

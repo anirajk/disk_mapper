@@ -1,0 +1,72 @@
+#!/bin/bash 
+
+PIDFILE=/var/run/disk_mapper
+
+if [ $UID -ne 0 ];
+then
+    echo "Please run as root"
+    exit 1
+fi
+
+status(){
+    if [ -e $PIDFILE ]; 
+    then
+        PID=$(cat $PIDFILE) 
+        kill -s 0 $PID 2> /dev/null && echo "Disk Mapper is running with pid $PID" && exit 0
+        echo "Disk Mapper is not running" 
+    else
+        echo "Disk Mapper is not running" 
+    fi
+}
+
+start(){
+    if [ -e $PIDFILE ];
+    then
+        PID=$(cat $PIDFILE) 
+        kill -s 0 $PID 2> /dev/null && echo "Disk Mapper is running with pid $PID" && exit 0
+    fi
+
+    python /opt/disk_mapper/diskmapper_daemon.py > /dev/null 2>&1 &
+    pid=$(ps ax | grep diskmapper_daemon | grep -v grep | awk '{print $1}')
+    echo $pid > $PIDFILE
+    sleep 1
+    status | grep 'is running' 2> /dev/null
+    if [ $? -eq 0 ];
+    then
+        echo Started Disk Mapper && exit 0
+    else
+        echo Failed to start Disk Mapper && exit 1
+    fi
+}
+
+
+stop(){
+    rm -rf $PIDFILE
+    if [ $? -eq 0 ];
+    then
+        echo "Stopped Disk Mapper successfully"
+    else
+        echo "Disk Mapper is not running"
+    fi
+}
+
+case "$1" in
+    start)
+        start 
+        ;;
+    stop)
+        stop
+        ;;
+    status)
+        status; 
+        ;;
+    restart)
+        stop
+        start
+        ;;
+    *)
+    echo $"Usage: $0 {start|stop|status|restart}"
+    exit 1
+esac
+
+

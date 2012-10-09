@@ -6,7 +6,7 @@ Name:          storage-server
 Version:       %{pkg_version}
 Release:       %{branch_version}
 Group:         Servers/Internet
-Source:        zstore.tgz
+Source:        storageserver.tgz
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires:      php python httpd
 License:       Proprietary
@@ -96,14 +96,10 @@ for disk in `df -h | grep data_ | awk '{print $NF}' ` ; do mkdir $disk/primary ;
 chown -R apache /var/www/html/
 chmod -R a+x /var/www/html/
 
-# Make required changes to php.ini
-sed -i "s/.*post_max_size.*/post_max_size = 5120M/" /etc/php.ini
-sed -i "s/.*upload_tmp_dir.*/upload_tmp_dir =  \"\/var\/www\/html\/membase_backup\/partition_0\/upload_tmp\/\"/" /etc/php.ini
-sed -i "s/.*upload_max_filesize.*/upload_max_filesize = 5120M/" /etc/php.ini
-
-# Modify httpd conf.
-#sed -i "s/-Indexes/Indexes/" /etc/httpd/conf.d/welcome.conf
-
+# Create bad file.
+mkdir /var/tmp/disk_mapper
+touch /var/tmp/disk_mapper/bad_disk
+chown -R apache /var/tmp/disk_mapper
 
 # Restart apache.
 /etc/init.d/httpd restart
