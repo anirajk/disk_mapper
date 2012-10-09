@@ -27,18 +27,18 @@ Setup NetOps storage server to backup up data.
     %{buildroot}/usr/bin/
 
 %{__cp} __init__.py request_handler.py resume_coalescer.py hook.sh %{buildroot}/opt/storage_server/
-%{__cp} __init__.py storageserver.py urlmapper.py %%{buildroot}/opt/storage_server/lib/
-%{__cp} urlrelay-0.7.1.tar.bz2 %%{buildroot}/tmp/
-%{__cp} ztorrent-client-2.0-8.noarch.rpm %%{buildroot}/tmp/
-%{__cp} ztorrent-tracker-2.0-8.noarch.rpm %%{buildroot}/tmp/
-%{__cp} BitTornado-0.3.17.tar.gz %%{buildroot}/tmp/
+%{__cp} __init__.py lib/storageserver.py lib/urlmapper.py %{buildroot}/opt/storage_server/lib/
+%{__cp} packages/urlrelay-0.7.1.tar.bz2 %{buildroot}/tmp/
+%{__cp} packages/ztorrent-client-2.0-8.noarch.rpm %{buildroot}/tmp/
+%{__cp} packages/ztorrent-tracker-2.0-8.noarch.rpm %{buildroot}/tmp/
+%{__cp} packages/BitTornado-0.3.17.tar.gz %{buildroot}/tmp/
 %{__chmod} +x  %{buildroot}/opt/storage_server/*.py
 %{__chmod} +x  %{buildroot}/opt/storage_server/*.sh
 %{__chmod} +x  %{buildroot}/opt/storage_server/lib/*.py
 
-%{__cp} http_membase_backup.conf %%{buildroot}/etc/httpd/conf.d/membase_backup.conf
+%{__cp} config/http_membase_backup.conf %{buildroot}/etc/httpd/conf.d/membase_backup.conf
 
-%{__cp} zstore_cmd %{buildroot}/usr/bin/
+%{__cp} zstore_cmd/zstore_cmd %{buildroot}/usr/bin/
 %{__chmod} +x  %{buildroot}/usr/bin/zstore_cmd
 
 %clean
@@ -46,14 +46,18 @@ Setup NetOps storage server to backup up data.
 
 %files
 %defattr(-, apache, apache, 0755)
-/var/www/html/
-/opt/storage_server/request_handler.py
-/opt/storage_server/lib/storageserver.py
-/opt/storage_server/lib/urlmapper.py
+/opt/storage_server/*.sh
+/opt/storage_server/*.py
+/opt/storage_server/lib/*.py
 
 %defattr(-, root, root, 0755)
 /etc/httpd/conf.d/membase_backup.conf
 /usr/bin/zstore_cmd
+/tmp/BitTornado-0.3.17.tar.gz
+/tmp/urlrelay-0.7.1.tar.bz2
+/tmp/ztorrent-client-2.0-8.noarch.rpm
+/tmp/ztorrent-tracker-2.0-8.noarch.rpm
+
 
 %post
 # Install mod_wsgi
