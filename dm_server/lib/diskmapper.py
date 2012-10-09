@@ -15,6 +15,7 @@ import threading
 import socket
 import logging
 import subprocess
+from signal import SIGSTOP, SIGCONT
 from config import config
 from cgi import parse_qs
 
@@ -626,4 +627,3 @@ class DiskMapper:
         os.chown(self.mapping_file, 48, -1)
         f.close()
         return True
-

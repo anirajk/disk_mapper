@@ -1,5 +1,7 @@
 FILES=__init__.py\
  request_handler.py\
+ hook.sh\
+ resume_coalescer.py\
  lib/storageserver.py\
  lib/urlmapper.py\
  config/http_membase_backup.conf\

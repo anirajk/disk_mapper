@@ -26,13 +26,14 @@ Setup NetOps storage server to backup up data.
     %{buildroot}/opt/storage_server/lib/ \
     %{buildroot}/usr/bin/
 
-%{__cp} __init__.py request_handler.py %{buildroot}/opt/storage_server/
+%{__cp} __init__.py request_handler.py resume_coalescer.py hook.sh %{buildroot}/opt/storage_server/
 %{__cp} __init__.py storageserver.py urlmapper.py %%{buildroot}/opt/storage_server/lib/
 %{__cp} urlrelay-0.7.1.tar.bz2 %%{buildroot}/tmp/
 %{__cp} ztorrent-client-2.0-8.noarch.rpm %%{buildroot}/tmp/
 %{__cp} ztorrent-tracker-2.0-8.noarch.rpm %%{buildroot}/tmp/
 %{__cp} BitTornado-0.3.17.tar.gz %%{buildroot}/tmp/
 %{__chmod} +x  %{buildroot}/opt/storage_server/*.py
+%{__chmod} +x  %{buildroot}/opt/storage_server/*.sh
 %{__chmod} +x  %{buildroot}/opt/storage_server/lib/*.py
 
 %{__cp} http_membase_backup.conf %%{buildroot}/etc/httpd/conf.d/membase_backup.conf

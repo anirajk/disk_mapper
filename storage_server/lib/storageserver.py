@@ -9,16 +9,18 @@ import json
 import fcntl
 import time
 from cgi import parse_qs
+from signal import SIGSTOP, SIGCONT
 
 
 class StorageServer:
 
     def __init__(self, environ, start_response):
-        self.environ  = environ
-        self.query_string  = environ["QUERY_STRING"]
-        self.start_response = start_response
-        self.status = '400 Bad Request'
-        self.response_headers = [('Content-type', 'text/plain')]
+        if environ != None:
+            self.environ  = environ
+            self.query_string  = environ["QUERY_STRING"]
+            self.start_response = start_response
+            self.status = '400 Bad Request'
+            self.response_headers = [('Content-type', 'text/plain')]
 
     def list(self):
         self.status = '202 Accepted'
@@ -251,11 +253,13 @@ class StorageServer:
             return "Invalid arguments."
 
         # aria2c --dir=/mydownloads --follow-torrent=mem --seed-time=0 --remove-control-file http://10.36.168.173/torrent/1347780080.torrent
-        cmd = 'aria2c --dir=' + os.path.dirname(file_path + "/../")  + ' --follow-torrent=mem --seed-time=0 --bt-stop-timeout=300 --remove-control-file ' + torrent_url
+        self.pause_coalescer(file_path)
+        cmd = 'aria2c --dir=' + os.path.dirname(file_path + "/../") + '--follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --bt-stop-timeout=300 --remove-control-file ' + torrent_url
         self.status = '500 Internal Server Error'
         if os.system(cmd):
             print cmd
             self._start_response()
+            self.resume_coalescer(file_path)
             return "Failed to start download."
 
         cmd1 = "zstore_cmd del " + torrent_url.replace("http://", "s3://") 
@@ -294,9 +298,11 @@ class StorageServer:
             return "Failed to create torrent."
 
         # aria2c -V --dir=/home/sqadir /var/www/html/torrent/bit.torrent --seed-ratio=1.0
-        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path + "/../") + " " + torrent_path + " --seed-ratio=1.0 -D --remove-control-file --bt-stop-timeout=300"
+        self.pause_coalescer(file_path)
+        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path + "/../") + " " + torrent_path + ' --seed-ratio=1.0 -D --remove-control-file --bt-stop-timeout=300 --on-download-stop="/opt/storage_server/hook.sh"'
         if os.system(cmd1):
             print cmd1
+            self.resume_coalescer(file_path)
             self.status = '500 Internal Server Error'
             self._start_response()
             return "Failed to seed file."
@@ -470,3 +476,36 @@ class StorageServer:
     def _start_response(self):
         self.start_response(self.status, self.response_headers)
 
+    def pause_coalescer(self, path):
+        disk_id = path.split("/")[1][-1:]
+        daily_merge_pfile = "/var/run/daily-merge-disk-" + disk_id + ".pid"
+        master_merge_pfile = "/var/run/master-merge-disk-" + disk_id + ".pid"
+        daily_pid = self._get_value_pid_file(daily_merge_pfile)
+        master_pid = self._get_value_pid_file(master_merge_pfile)
+        try:
+            os.kill(int(daily_pid), SIGSTOP)
+            os.kill(int(master_pid), SIGSTOP)
+        except:
+            os.kill(int(daily_pid), SIGCONT)
+            os.kill(int(master_pid), SIGCONT)
+
+    def resume_coalescer(self, path):
+        disk_id = path.split("/")[1][-1:]
+        daily_merge_pfile = "/var/run/daily-merge-disk-" + disk_id + ".pid"
+        master_merge_pfile = "/var/run/master-merge-disk-" + disk_id + ".pid"
+        daily_pid = self._get_value_pid_file(daily_merge_pfile)
+        master_pid = self._get_value_pid_file(master_merge_pfile)
+        print daily_merge_pfile
+        print master_merge_pfile
+        os.kill(int(daily_pid), SIGCONT)
+        os.kill(int(master_pid), SIGCONT)
+
+    def _get_value_pid_file(self, file):
+        try:
+            if os.path.exists(file):
+                f = open(file, "r")
+                return f.read().strip()
+        except:
+            return False
+        else:
+            return False
