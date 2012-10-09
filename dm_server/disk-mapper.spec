@@ -23,19 +23,20 @@ Setup NetOps storage server to backup up data.
     %{buildroot}/tmp/ \
     %{buildroot}/etc/httpd/conf.d/ \
     %{buildroot}/opt/disk_mapper/lib/ \
+    %{buildroot}/opt/disk_mapper/ \
     %{buildroot}/etc/init.d/ \
     %{buildroot}/usr/bin/
 
 %{__cp} __init__.py config.py diskmapper_daemon.py request_handler.py %{buildroot}/opt/disk_mapper/
-%{__cp} __init__.py diskmapper.py urlmapper.py %%{buildroot}/opt/disk_mapper/lib/
-%{__cp} disk_mapper %%{buildroot}/etc/init.d/
-%{__cp} urlrelay-0.7.1.tar.bz2 %%{buildroot}/tmp/
+%{__cp} __init__.py lib/diskmapper.py lib/urlmapper.py %{buildroot}/opt/disk_mapper/lib/
+%{__cp} init.d/disk_mapper %{buildroot}/etc/init.d/
+%{__cp} packages/urlrelay-0.7.1.tar.bz2 %{buildroot}/tmp/
 %{__chmod} +x  %{buildroot}/opt/disk_mapper/*.py
 %{__chmod} +x  %{buildroot}/opt/disk_mapper/lib/*.py
 
-%{__cp} http_disk_mapper.conf %%{buildroot}/etc/httpd/conf.d/disk_mapper.conf
+%{__cp} config/http_disk_mapper.conf %{buildroot}/etc/httpd/conf.d/disk_mapper.conf
 
-%{__cp} zstore_cmd %{buildroot}/usr/bin/
+%{__cp} zstore_cmd/zstore_cmd %{buildroot}/usr/bin/
 %{__chmod} +x  %{buildroot}/usr/bin/zstore_cmd
 
 %clean
@@ -43,16 +44,17 @@ Setup NetOps storage server to backup up data.
 
 %files
 %defattr(-, apache, apache, 0755)
-/var/www/html/
+/opt/disk_mapper/__init__.py
 /opt/disk_mapper/request_handler.py
-/opt/disk_mapper/lib/diskmapper.py
-/opt/disk_mapper/lib/urlmapper.py
+/opt/disk_mapper/config.py
+/opt/disk_mapper/lib/*.py
 
 %defattr(-, root, root, 0755)
 /etc/init.d/disk_mapper
 /etc/httpd/conf.d/disk_mapper.conf
 /opt/disk_mapper/diskmapper_daemon.py
 /usr/bin/zstore_cmd
+/tmp/urlrelay-0.7.1.tar.bz2
 
 %post
 # Install mod_wsgi
@@ -75,6 +77,7 @@ chmod 0666 /var/log/disk_mapper.log
 
 
 # Restart apache.
+chown -R apache /var/www/html
 /etc/init.d/httpd restart
 
 %preun
