@@ -64,6 +64,7 @@ Setup NetOps storage server to backup up data.
 yum -y install mod_wsgi
 
 # Install url_relay
+cd /tmp/
 tar -xvf /tmp/urlrelay-0.7.1.tar.bz2
 python /tmp/urlrelay-0.7.1/setup.py install 
 
