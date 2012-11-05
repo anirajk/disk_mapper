@@ -8,7 +8,7 @@ Release:       %{branch_version}
 Group:         Servers/Internet
 Source:        diskmapper.tgz
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root
-Requires:      python httpd
+Requires:      python httpd mod_wsgi
 License:       Proprietary
 
 %description
@@ -57,8 +57,6 @@ Setup NetOps storage server to backup up data.
 /tmp/urlrelay-0.7.1.tar.bz2
 
 %post
-# Install mod_wsgi
-yum -y install mod_wsgi
 
 # Install url_relay
 cd /tmp/

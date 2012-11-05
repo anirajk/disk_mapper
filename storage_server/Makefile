@@ -9,8 +9,6 @@ FILES=__init__.py\
  ../zstore_cmd/zstore_cmd\
  ../packages/urlrelay-0.7.1.tar.bz2\
  ../packages/BitTornado-0.3.17.tar.gz\
- ../packages/ztorrent-tracker-2.0-8.noarch.rpm\
- ../packages/ztorrent-client-2.0-8.noarch.rpm\
  Makefile
 
 

@@ -8,7 +8,7 @@ Release:       %{branch_version}
 Group:         Servers/Internet
 Source:        storageserver.tgz
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root
-Requires:      php python httpd
+Requires:      php python httpd mod_wsgi php-common php-pear php-devel php-cli php-pdo openssl openssl-devel openssl098e openssl-static openssl-perl ztorrent-client ztorrent-tracker
 License:       Proprietary
 
 %description
@@ -16,6 +16,7 @@ Setup NetOps storage server to backup up data.
 
 %prep
 %setup -q -c storage-server-%{version} 
+
 
 %install
 %{__rm} -rf %{buildroot}
@@ -29,8 +30,6 @@ Setup NetOps storage server to backup up data.
 %{__cp} __init__.py request_handler.py resume_coalescer.py hook.sh %{buildroot}/opt/storage_server/
 %{__cp} __init__.py lib/storageserver.py lib/urlmapper.py %{buildroot}/opt/storage_server/lib/
 %{__cp} packages/urlrelay-0.7.1.tar.bz2 %{buildroot}/tmp/
-%{__cp} packages/ztorrent-client-2.0-8.noarch.rpm %{buildroot}/tmp/
-%{__cp} packages/ztorrent-tracker-2.0-8.noarch.rpm %{buildroot}/tmp/
 %{__cp} packages/BitTornado-0.3.17.tar.gz %{buildroot}/tmp/
 %{__chmod} +x  %{buildroot}/opt/storage_server/*.py
 %{__chmod} +x  %{buildroot}/opt/storage_server/*.sh
@@ -40,6 +39,7 @@ Setup NetOps storage server to backup up data.
 
 %{__cp} zstore_cmd/zstore_cmd %{buildroot}/usr/bin/
 %{__chmod} +x  %{buildroot}/usr/bin/zstore_cmd
+
 
 %clean
 %{__rm} -rf %{buildroot}
@@ -55,13 +55,8 @@ Setup NetOps storage server to backup up data.
 /usr/bin/zstore_cmd
 /tmp/BitTornado-0.3.17.tar.gz
 /tmp/urlrelay-0.7.1.tar.bz2
-/tmp/ztorrent-client-2.0-8.noarch.rpm
-/tmp/ztorrent-tracker-2.0-8.noarch.rpm
-
 
 %post
-# Install mod_wsgi
-yum -y install mod_wsgi
 
 # Install url_relay
 cd /tmp/
@@ -69,25 +64,17 @@ tar -xvf /tmp/urlrelay-0.7.1.tar.bz2
 python /tmp/urlrelay-0.7.1/setup.py install 
 
 # Setup ztorrent
-yum install -y php-common-5.3.3-3.el6_2.6.x86_64
-yum install -y php-pear-1.9.4-4.el6.noarch
-yum install -y php-5.3.3-3.el6_2.6.x86_64
-yum install -y php-devel-5.3.3-3.el6_2.6.x86_64
-yum install -y php-cli-5.3.3-3.el6_2.6.x86_64
-yum install -y php-pdo-5.3.3-3.el6_2.6.x86_64
 pear install Net_URL2-0.3.1
 pear install HTTP_Request2-2.0.0RC1
 pear install Cache_Lite-1.7.11
 pear install XML_RPC2
 
-yum install -y openssl*
 
-rpm -ivh /tmp/ztorrent-tracker-2.0-8.noarch.rpm
-rpm -ivh /tmp/ztorrent-client-2.0-8.noarch.rpm
 
 ip=$(ifconfig eth0 | grep -w inet | awk '{print $2}' | sed "s/.*://") ; sed -i "s/@@TRACKER_IP_HERE@@/$ip/" /etc/opentracker/opentracker.conf
 /etc/init.d/opentracker start
 
+cd /tmp/
 tar -xvf /tmp/BitTornado-0.3.17.tar.gz
 python /tmp/BitTornado-CVS/setup.py install
 
