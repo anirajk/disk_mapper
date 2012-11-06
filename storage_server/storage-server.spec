@@ -61,7 +61,8 @@ Setup NetOps storage server to backup up data.
 # Install url_relay
 cd /tmp/
 tar -xvf /tmp/urlrelay-0.7.1.tar.bz2
-python /tmp/urlrelay-0.7.1/setup.py install 
+cd urlrelay-0.7.1/
+python setup.py install
 
 # Setup ztorrent
 pear install Net_URL2-0.3.1
@@ -82,6 +83,7 @@ sed -i "s/from sha import sha/from hashlib import sha1 as sha/" /usr/lib/python2
 sed -i "s/from sha import sha/from hashlib import sha1 as sha/" /usr/lib/python2.6/site-packages/BitTornado/__init__.py
 
 # Setup symlinks to partition.
+mkdir /var/www/html/membase_backup
 for part in `df | grep "/data_" |  awk '{print $NF}' ` ; do  ln -s $part /var/www/html/membase_backup$part ; chmod -R 0777 $part ; done
 
 # Create primary and secondary on each disk

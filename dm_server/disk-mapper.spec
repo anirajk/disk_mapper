@@ -61,13 +61,16 @@ Setup NetOps storage server to backup up data.
 # Install url_relay
 cd /tmp/
 tar -xvf /tmp/urlrelay-0.7.1.tar.bz2
-python /tmp/urlrelay-0.7.1/setup.py install 
+cd urlrelay-0.7.1/
+python setup.py install 
 
 # Create disk mapper tmp folder
 mkdir /var/tmp/disk_mapper
 touch /var/tmp/disk_mapper/host.mapping
 chown -R apache /var/tmp/disk_mapper
 
+# Set perms to init.d script
+chmod 755 /etc/init.d/disk_mapper
 
 # Create Log file
 touch /var/log/disk_mapper.log
