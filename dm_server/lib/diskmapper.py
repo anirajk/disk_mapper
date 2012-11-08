@@ -533,24 +533,37 @@ class DiskMapper:
         mapping = self._get_mapping("storage_server")
         if mapping == False:
             return False
-    
+
         spare_mapping = {}
+        spare_type_mapping = {}
         spare_mapping["primary"] = []
         spare_mapping["secondary"] = []
         for storage_server in mapping:
             if storage_server == skip or storage_server in self.bad_servers:
                 continue
+            spare_type_mapping[storage_server] = []
             for disk in mapping[storage_server]:
                 for disk_type in mapping[storage_server][disk]:
                     if disk_type == "primary" or disk_type == "secondary":
                         host_name = mapping[storage_server][disk][disk_type]
                         if host_name == "spare" and mapping[storage_server][disk]["status"] != "bad":
                             if type == disk_type:
-                                return { "disk" : disk, "storage_server" : storage_server}
+                                spare_type_mapping[storage_server].append(disk)
                             spare_mapping[disk_type].append({ "disk" : disk, "storage_server" : storage_server})
 
         if type != None:
-            return False
+            highest_spare_count = 0
+            server_with_most_spare = None
+            for storage_server in spare_type_mapping:
+                current_count = len(spare_type_mapping[storage_server])
+                if current_count > highest_spare_count:
+                    highest_spare_count = current_count
+                    server_with_most_spare = storage_server
+                
+            if server_with_most_spare == None:
+                return False
+            spare_disk = spare_type_mapping[server_with_most_spare].pop()
+            return {"disk" : spare_disk, "storage_server" : server_with_most_spare }
         return spare_mapping
 
     def _get_mapping(self, type, key = None):
