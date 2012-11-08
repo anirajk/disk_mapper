@@ -28,7 +28,7 @@ logger.setLevel(logging.DEBUG)
 
 class DiskMapper:
 
-    def __init__(self, environ, start_response):
+	def __init__(self, environ, start_response):
         self.mapping_file = '/var/tmp/disk_mapper/host.mapping'
         self.bad_servers = []
         if environ != None:
@@ -37,6 +37,9 @@ class DiskMapper:
             self.start_response = start_response
             self.status = '400 Bad Request'
             self.response_headers = [('Content-type', 'text/plain')]
+		if not os.path.exists("/var/run/disk_mapper"):
+	        logger.info("=== Disk Mapper service is Not running ===")
+        	exit()
 
     def forward_request(self):
         self.status = '202 Accepted'
