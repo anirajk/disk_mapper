@@ -88,6 +88,7 @@ for part in `df | grep "/data_" |  awk '{print $NF}' ` ; do  ln -s $part /var/ww
 
 # Create primary and secondary on each disk
 for disk in `df -h | grep data_ | awk '{print $NF}' ` ; do mkdir $disk/primary ; mkdir $disk/secondary ; done
+chown -R apache /data_*/
 chown -R apache /var/www/html/
 chmod -R a+x /var/www/html/
 

@@ -48,6 +48,7 @@ stop(){
     else
         echo "Disk Mapper is not running"
     fi
+	sleep 5
 }
 
 case "$1" in
