@@ -77,7 +77,8 @@ ip=$(ifconfig eth0 | grep -w inet | awk '{print $2}' | sed "s/.*://") ; sed -i "
 
 cd /tmp/
 tar -xvf /tmp/BitTornado-0.3.17.tar.gz
-python /tmp/BitTornado-CVS/setup.py install
+cd BitTornado-CVS/
+python setup.py install
 
 sed -i "s/from sha import sha/from hashlib import sha1 as sha/" /usr/lib/python2.6/site-packages/BitTornado/BT1/makemetafile.py
 sed -i "s/from sha import sha/from hashlib import sha1 as sha/" /usr/lib/python2.6/site-packages/BitTornado/__init__.py
