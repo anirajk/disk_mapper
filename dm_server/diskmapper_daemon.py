@@ -24,6 +24,7 @@ try:
 	logger.info("Initializing DiskMapper")
 	dm.initialize_diskmapper()
 	logger.info(dm._get_mapping("host"))
+	time.sleep(5)
 	while True:
 		if dm.is_dm_active() == True:
 			logger.debug("====Active Disk Mapper===")
