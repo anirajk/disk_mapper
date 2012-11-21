@@ -24,7 +24,7 @@ hdlr = logging.FileHandler('/var/log/disk_mapper.log')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.ERROR)
 
 class DiskMapper:
 
@@ -37,7 +37,7 @@ class DiskMapper:
 			self.start_response = start_response
 			self.status = '400 Bad Request'
 			self.response_headers = [('Content-type', 'text/plain')]
-		if not os.path.exists("/var/run/disk_mapper"):
+		if not os.path.exists("/var/run/disk_mapper.lock"):
 			logger.info("=== Disk Mapper service is Not running ===")
 			exit()
 
@@ -64,7 +64,7 @@ class DiskMapper:
 			logger.debug("Primary mapping : " + str(mapping["primary"]))
 
 		if status == "bad" or status == None:
-			logger.info("Primary disk is bad.")
+			logger.info("Primary disk is not available or is bad.")
 			if "secondary" in mapping.keys():
 				logger.info("Found secondary for " + host_name)
 				storage_server = mapping["secondary"]["storage_server"]
@@ -284,7 +284,12 @@ class DiskMapper:
 			logger.error("Failed to get dirty file from storage server: " + storage_server)
 			return False
 
-		for file in set(dirty_file.split("\\n")):
+		files = dirty_file.split("\n")
+		sorted_files = self._uniq(files)
+		[ x.strip() for x in sorted_files ]
+		for file in sorted_files:
+			if file == "":
+				continue
 			cp_from_detail = file.split("/")
 			cp_from_server = storage_server
 			try:
@@ -340,7 +345,7 @@ class DiskMapper:
 			return False
 
 		bad_disks = self._get_bad_disks(storage_server)
-		if server_config == False:
+		if bad_disks == False:
 			logger.error("Failed to get bad disks form storage server: " + storage_server)
 			return False
 
@@ -361,7 +366,9 @@ class DiskMapper:
 		if value != False:
 			value = json.loads(value)
 		active_dm = value["output"][zrt["mcs_key_name"]]
+		active_dm = active_dm.pop()
 		ip = socket.gethostbyname(socket.gethostname())
+		logger.debug("ip : " + str(ip) + " active_dm : " + str(active_dm));
 		if active_dm == ip:
 			return True
 		return False
@@ -466,6 +473,9 @@ class DiskMapper:
 			return json.loads(value)
 		return False
 		
+	def _curl_debug (self, debug_type, debug_msg):
+		logger.debug("Curl:" + str(debug_type) + " " + str(debug_msg))
+		
 	def _curl (self, url, exp_return_code=None, insecure=False):
 		buf = cStringIO.StringIO()
 		storage_server = url.split("/")[2]
@@ -477,6 +487,8 @@ class DiskMapper:
 			c.setopt(pycurl.USERPWD, zrt["username"] + ":" + zrt["password"])
 
 		c.setopt(c.WRITEFUNCTION, buf.write)
+		#c.setopt(pycurl.VERBOSE, 1)
+		#c.setopt(pycurl.DEBUGFUNCTION, self._curl_debug)
 		try:
 			c.perform()
 			if storage_server in self.bad_servers:
@@ -489,9 +501,11 @@ class DiskMapper:
 			return False
 
 		if c.getinfo(pycurl.HTTP_CODE) != exp_return_code and exp_return_code != None:
+			c.close()
 			return False
 
 		value = buf.getvalue()
+		c.close()
 		buf.close()
 		return value
 
@@ -501,7 +515,7 @@ class DiskMapper:
 		c.setopt(c.URL, str(url))
 		for retry in range(3):
 			try:
-				#time.sleep(5)
+				time.sleep(5)
 				c.perform()
 			except pycurl.error, error:
 				errno, errstr = error
@@ -577,8 +591,6 @@ class DiskMapper:
 		f = open(self.mapping_file, 'r')
 		fcntl.flock(f.fileno(), fcntl.LOCK_EX)
 		file_content = pickle.load(f)
-		fcntl.flock(f.fileno(), fcntl.LOCK_UN)
-		f.close()
 		
 		if type == "host":
 			mapping = {}
@@ -595,6 +607,10 @@ class DiskMapper:
 
 		elif type == "storage_server":
 			mapping = file_content
+
+
+		fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+		f.close()
 
 		if key == None:
 			return mapping
@@ -613,6 +629,7 @@ class DiskMapper:
 		else:
 			f = open(self.mapping_file, 'w+')
 			
+		#logger.debug("Updating mapping :" + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
 		fcntl.flock(f.fileno(), fcntl.LOCK_EX)
 		file_content = f.read()
 		if file_content != "":
@@ -622,6 +639,7 @@ class DiskMapper:
 		else:
 			file_content = {}
 
+		#logger.debug("here with : " + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
 		if storage_server in file_content.keys():
 			if disk in file_content[storage_server].keys():
 				#if disk_type in file_content[storage_server][disk].keys()
@@ -637,9 +655,18 @@ class DiskMapper:
 		pickle.dump(file_content,f)
 		f.seek(0, 0)
 		verify_content = pickle.load(f)
+		#logger.debug("Updated content : " + str(verify_content))
 		if verify_content != file_content:
 			logger.error("Failed to update mapping for " + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
+		os.fsync(f)
 		fcntl.flock(f.fileno(), fcntl.LOCK_UN)
-		os.chown(self.mapping_file, 48, -1)
 		f.close()
 		return True
+
+	def _uniq(self, input):
+		output = []
+		for x in input:
+			if x not in output:
+				output.append(x)
+		return output
+

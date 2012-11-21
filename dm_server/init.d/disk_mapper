@@ -1,6 +1,10 @@
 #!/bin/bash 
 
-PIDFILE=/var/run/disk_mapper
+# Source function library.
+. /etc/init.d/functions
+
+PIDFILE=/var/run/disk_mapper.pid
+LOCKFILE=/var/run/disk_mapper.lock
 
 if [ $UID -ne 0 ];
 then
@@ -26,29 +30,28 @@ start(){
         kill -s 0 $PID 2> /dev/null && echo "Disk Mapper is running with pid $PID" && exit 0
     fi
 
-    python /opt/disk_mapper/diskmapper_daemon.py > /dev/null 2>&1 &
-    pid=$(ps ax | grep diskmapper_daemon | grep -v grep | awk '{print $1}')
+    #su - diskmapper -c "python /opt/disk_mapper/diskmapper_daemon.py > /dev/null 2>&1 &"
+    #su -s /bin/sh apache -c "python /opt/disk_mapper/diskmapper_daemon.py > /dev/null 2>&1 &"
+    echo -n "Starting Disk Mapper"
+    daemon --pidfile=${PIDFILE} --user=apache 'python /opt/disk_mapper/diskmapper_daemon.py > /dev/null 2>&1 & '
+    pid=$(ps ax | grep 'python /opt/disk_mapper/diskmapper_daemon.py' | grep -v grep | awk '{print $1}')
     echo $pid > $PIDFILE
-    sleep 1
-    status | grep 'is running' 2> /dev/null
-    if [ $? -eq 0 ];
-    then
-        echo Started Disk Mapper && exit 0
-    else
-        echo Failed to start Disk Mapper && exit 1
-    fi
+    touch $LOCKFILE && chown apache $LOCKFILE
+    echo
 }
 
 
 stop(){
-    rm -rf $PIDFILE
-    if [ $? -eq 0 ];
+    echo -n "Stopping Disk Mapper"
+    rm -rf $LOCKFILE
+    sleep 5
+    if [ ! -f $LOCKFILE ];
     then
-        echo "Stopped Disk Mapper successfully"
+        echo_success
     else
-        echo "Disk Mapper is not running"
+        echo_failure
     fi
-	sleep 5
+    echo
 }
 
 case "$1" in

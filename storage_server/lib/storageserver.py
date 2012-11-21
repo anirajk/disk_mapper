@@ -119,6 +119,7 @@ class StorageServer:
         for line in file_content:
             if entry not in line:
                 f.write(line)
+        os.fsync(f)
         fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         f.close()
 
@@ -154,6 +155,7 @@ class StorageServer:
 
         self.status = '200 OK'
         self._start_response()
+        self.response_headers = [('Content-type', 'application/json')]
         return json.dumps(file_content)
 
     def make_spare(self):
@@ -384,6 +386,7 @@ class StorageServer:
         f = open(file, 'a+')
         fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         f.write(line + "\n")
+        os.fsync(f)
         fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         f.close()    
 
@@ -483,8 +486,10 @@ class StorageServer:
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
         master_pid = self._get_value_pid_file(master_merge_pfile)
         try:
-            os.kill(int(daily_pid), SIGSTOP)
-            os.kill(int(master_pid), SIGSTOP)
+            if daily_pid is not False:
+                os.kill(int(daily_pid), SIGSTOP)
+            if master_pid is not False:
+                os.kill(int(master_pid), SIGSTOP)
         except:
             os.kill(int(daily_pid), SIGCONT)
             os.kill(int(master_pid), SIGCONT)
@@ -495,8 +500,6 @@ class StorageServer:
         master_merge_pfile = "/var/run/master-merge-disk-" + disk_id + ".pid"
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
         master_pid = self._get_value_pid_file(master_merge_pfile)
-        print daily_merge_pfile
-        print master_merge_pfile
         os.kill(int(daily_pid), SIGCONT)
         os.kill(int(master_pid), SIGCONT)
 

@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.1
+%define branch_version 0.3
 
 Summary:       Setup storage server
 Name:          storage-server
@@ -118,6 +118,11 @@ chown -R blobrestore /home/blobrestore/
 
 
 %changelog
+
+* Wed Nov 21 2012 - sqadir@zynga.com
+
+- Bug fixes.
+- SEG-10395 - Torrents not getting created, when coalescers are not installed.
 
 * Tue Oct 09 2012 - sqadir@zynga.com
 - Initial QA Release

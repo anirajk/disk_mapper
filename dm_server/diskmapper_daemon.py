@@ -13,7 +13,7 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 def is_daemon_stopped():
-	if not os.path.exists("/var/run/disk_mapper"):
+	if not os.path.exists("/var/run/disk_mapper.lock"):
 		logger.info("=== Disk Mapper Stopped ===")
 		exit()
 
@@ -24,14 +24,13 @@ try:
 	logger.info("Initializing DiskMapper")
 	dm.initialize_diskmapper()
 	logger.info(dm._get_mapping("host"))
-	time.sleep(5)
 	while True:
 		if dm.is_dm_active() == True:
 			logger.debug("====Active Disk Mapper===")
-			logger.debug("Enabling replication")
+			logger.debug("Polling to enable replication.")
 			is_daemon_stopped()
 			dm.enable_replication()
-			logger.debug("Swapping bad disks")
+			logger.debug("Polling for bad disks.")
 			is_daemon_stopped()
 			dm.swap_bad_disk()
 
@@ -40,6 +39,7 @@ try:
 		dm.initialize_diskmapper(True)
 		logger.debug(dm._get_mapping("storage_server"))
 		logger.debug("===")
+		time.sleep(5)
 		logger.debug(dm._get_mapping("host"))
 except:
-	os.remove("/var/run/disk_mapper")
+	os.remove("/var/run/disk_mapper.lock")

@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.1
+%define branch_version 0.3
 
 Summary:       Disk Mapper
 Name:          disk-mapper
@@ -87,6 +87,13 @@ chown -R apache /var/www/html
 %postun
 
 %changelog
+
+* Wed Nov 21 2012 - sqadir@zynga.com
+
+- Bug fixes.
+- SEG-10393 - Mapping not getting updated because of file sync issues.
+- SEG-10391 - Unable to start disk mapper daemon.
+- SEG-10398 - Disk mapper daemon crashing.
 
 * Tue Oct 09 2012 - sqadir@zynga.com
 - Initial QA Release
