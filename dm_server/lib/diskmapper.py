@@ -24,7 +24,7 @@ hdlr = logging.FileHandler('/var/log/disk_mapper.log')
 formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.INFO)
 
 class DiskMapper:
 
@@ -323,9 +323,14 @@ class DiskMapper:
 				return True
 
 			torrent_url = self._create_torrent(cp_from_server, file)
+			if torrent_url == "True":
+				logger.info("Torrent is running, for " + storage_server + ":" + file + " Skipping...")
+				continue
+
 			if torrent_url == False:
 				logger.error("Failed to get torrent url for " + storage_server + ":" + file)
 				return False
+
 				
 			if self._start_download(cp_to_server, cp_to_file, torrent_url) == True:
 				self._remove_entry(cp_from_server, file, "dirty_files")

@@ -26,20 +26,23 @@ try:
 	logger.info(dm._get_mapping("host"))
 	while True:
 		if dm.is_dm_active() == True:
-			logger.debug("====Active Disk Mapper===")
-			logger.debug("Polling to enable replication.")
+			logger.info("====Active Disk Mapper===")
+			logger.info("Polling to enable replication.")
 			is_daemon_stopped()
 			dm.enable_replication()
-			logger.debug("Polling for bad disks.")
+			logger.info("Polling for bad disks.")
 			is_daemon_stopped()
 			dm.swap_bad_disk()
 
-		logger.debug("Polling storage server for config.")
+		logger.info("Polling storage server for config.")
 		is_daemon_stopped()
 		dm.initialize_diskmapper(True)
 		logger.debug(dm._get_mapping("storage_server"))
 		logger.debug("===")
-		time.sleep(5)
 		logger.debug(dm._get_mapping("host"))
-except:
+		time.sleep(5)
+except Exception, e:
+	print e
+	logger.error(e)
 	os.remove("/var/run/disk_mapper.lock")
+	raise e

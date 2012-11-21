@@ -106,9 +106,9 @@ class StorageServer:
         return "Successfully removed entry from file."
 
     def _remove_line_from_file(self, file, entry):
-	if not os.path.exists(file):
+        if not os.path.exists(file):
             return True
-	
+    
         f = open(file, 'r+')
         fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         file_content = f.readlines()
@@ -256,7 +256,7 @@ class StorageServer:
 
         # aria2c --dir=/mydownloads --follow-torrent=mem --seed-time=0 --remove-control-file http://10.36.168.173/torrent/1347780080.torrent
         self.pause_coalescer(file_path)
-        cmd = 'aria2c --dir=' + os.path.dirname(file_path + "/../") + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --bt-stop-timeout=300 --remove-control-file ' + torrent_url
+        cmd = 'aria2c --dir=' + os.path.dirname(file_path + "/../") + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --bt-stop-timeout=300 --remove-control-file --allow-overwrite=true ' + torrent_url  
         self.status = '500 Internal Server Error'
         if os.system(cmd):
             print cmd
@@ -286,6 +286,13 @@ class StorageServer:
             return "Invalid arguments."
         torrent_folder = "/var/www/html/torrent"
 
+        ps_cmd = 'ps ax | grep "aria2c -V" | grep "' + os.path.dirname(file_path + "/../") + '" | grep -v "follow-torrent"'
+        if os.system(ps_cmd) == 1:
+            print ps_cmd
+            self.status = '200 OK'
+            self._start_response()
+            return "True"
+
         if not os.path.exists(torrent_folder):
             os.makedirs(torrent_folder)
 
@@ -301,7 +308,7 @@ class StorageServer:
 
         # aria2c -V --dir=/home/sqadir /var/www/html/torrent/bit.torrent --seed-ratio=1.0
         self.pause_coalescer(file_path)
-        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path + "/../") + " " + torrent_path + ' --seed-ratio=1.0 -D --remove-control-file --bt-stop-timeout=300 --on-download-stop="/opt/storage_server/hook.sh"'
+        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path + "/../") + " " + torrent_path + ' --seed-ratio=1.0 -D --remove-control-file --bt-stop-timeout=300 --on-download-stop="/opt/storage_server/hook.sh"' 
         if os.system(cmd1):
             print cmd1
             self.resume_coalescer(file_path)
@@ -372,10 +379,10 @@ class StorageServer:
 
         document_root = self.environ["DOCUMENT_ROOT"]
         splits =  path_info.split("/")
-	host_symlink = os.path.join(document_root, splits[1], splits[2])
-	host_path = os.readlink(host_symlink)
-	actual_path_prefix = host_path.replace("/var/www/html/membase_backup", "")
-	actual_path = path.replace(host_symlink, actual_path_prefix)
+        host_symlink = os.path.join(document_root, splits[1], splits[2])
+        host_path = os.readlink(host_symlink)
+        actual_path_prefix = host_path.replace("/var/www/html/membase_backup", "")
+        actual_path = path.replace(host_symlink, actual_path_prefix)
         dirty_file = os.path.join(host_symlink, "..", "..", "dirty")
         self._append_to_file(dirty_file, os.path.dirname(actual_path))
 
@@ -500,8 +507,10 @@ class StorageServer:
         master_merge_pfile = "/var/run/master-merge-disk-" + disk_id + ".pid"
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
         master_pid = self._get_value_pid_file(master_merge_pfile)
-        os.kill(int(daily_pid), SIGCONT)
-        os.kill(int(master_pid), SIGCONT)
+        if os.path.exists(daily_merge_pfile):
+            os.kill(int(daily_pid), SIGCONT)
+        if os.path.exists(master_merge_pfile):
+            os.kill(int(master_pid), SIGCONT)
 
     def _get_value_pid_file(self, file):
         try:
