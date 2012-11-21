@@ -52,6 +52,7 @@ stop(){
         echo_failure
     fi
     echo
+    rm -rf $PIDFILE
 }
 
 case "$1" in
