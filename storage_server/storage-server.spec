@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.3
+%define branch_version 0.4
 
 Summary:       Setup storage server
 Name:          storage-server
@@ -118,6 +118,9 @@ chown -R blobrestore /home/blobrestore/
 
 
 %changelog
+
+* Wed Nov 21 2012 - sqadir@zynga.com
+- Fixing filename not appended to url issue (zstore_cmd)
 
 * Wed Nov 21 2012 - sqadir@zynga.com
 
