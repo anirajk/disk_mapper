@@ -167,6 +167,10 @@ upload () {
     [[ -n $verified ]] && [[ $verified -eq 0 ]] && exit 0
     
     actual_url=$(curl $CURL_PARAM --connect-timeout 60 --max-time 900 --request "POST" "$url")
+
+	# Append file name if not specified.
+    [[ ${actual_url: -1} = "/" ]] && actual_url="$actual_url$file_name"
+
     # Execute curl
     curl $CURL_PARAM -L --connect-timeout 60 --max-time 900 --request "POST" --data-binary "@$file_path" "$actual_url"
     [[ $? -ne 0 ]] && exit 1
