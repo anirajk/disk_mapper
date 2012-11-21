@@ -83,6 +83,15 @@ class DiskMapper:
 		self._start_response()
 		return str(url)
 
+        def get_all_config(self):
+                self.status = '202 Accepted'
+                mapping = self._get_mapping ("host")
+
+                self.status = '200 OK'
+                self._start_response()
+                logger.debug("Mapping : " + str(mapping))
+                return json.dumps(mapping)
+
 	def get_host_config(self):
 		self.status = '202 Accepted'
 

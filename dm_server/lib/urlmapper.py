@@ -24,6 +24,8 @@ def index(environ, start_response):
         action = query_string["action"]
         if "get_host_config" in action:
             return dm.get_host_config()
+		elif "get_all_config" in action:
+            return dm.get_all_config()
 
     return dm.forward_request()
 

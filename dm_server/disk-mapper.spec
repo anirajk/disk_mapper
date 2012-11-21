@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.4
+%define branch_version 0.5
 
 Summary:       Disk Mapper
 Name:          disk-mapper
@@ -87,6 +87,10 @@ chown -R apache /var/www/html
 %postun
 
 %changelog
+
+* Wed Nov 21 2012 - sqadir@zynga.com
+
+- Added function to list entire mapping for QA automation.
 
 * Wed Nov 21 2012 - sqadir@zynga.com
 
