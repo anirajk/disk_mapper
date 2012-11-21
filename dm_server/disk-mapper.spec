@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.3
+%define branch_version 0.4
 
 Summary:       Disk Mapper
 Name:          disk-mapper
@@ -87,6 +87,10 @@ chown -R apache /var/www/html
 %postun
 
 %changelog
+
+* Wed Nov 21 2012 - sqadir@zynga.com
+
+- Changed to handle MCS key, only if its a string.
 
 * Wed Nov 21 2012 - sqadir@zynga.com
 

@@ -366,7 +366,6 @@ class DiskMapper:
 		if value != False:
 			value = json.loads(value)
 		active_dm = value["output"][zrt["mcs_key_name"]]
-		active_dm = active_dm.pop()
 		ip = socket.gethostbyname(socket.gethostname())
 		logger.debug("ip : " + str(ip) + " active_dm : " + str(active_dm));
 		if active_dm == ip:
