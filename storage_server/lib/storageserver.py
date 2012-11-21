@@ -256,7 +256,7 @@ class StorageServer:
 
         # aria2c --dir=/mydownloads --follow-torrent=mem --seed-time=0 --remove-control-file http://10.36.168.173/torrent/1347780080.torrent
         self.pause_coalescer(file_path)
-        cmd = 'aria2c --dir=' + os.path.dirname(file_path + "/../") + '--follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --bt-stop-timeout=300 --remove-control-file ' + torrent_url
+        cmd = 'aria2c --dir=' + os.path.dirname(file_path + "/../") + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --bt-stop-timeout=300 --remove-control-file ' + torrent_url
         self.status = '500 Internal Server Error'
         if os.system(cmd):
             print cmd
