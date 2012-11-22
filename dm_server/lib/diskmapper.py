@@ -83,14 +83,14 @@ class DiskMapper:
 		self._start_response()
 		return str(url)
 
-        def get_all_config(self):
-                self.status = '202 Accepted'
-                mapping = self._get_mapping ("host")
+	def get_all_config(self):
+		self.status = '202 Accepted'
+		mapping = self._get_mapping ("host", None, False)
 
-                self.status = '200 OK'
-                self._start_response()
-                logger.debug("Mapping : " + str(mapping))
-                return json.dumps(mapping)
+		self.status = '200 OK'
+		self._start_response()
+		logger.debug("Mapping : " + str(mapping))
+		return json.dumps(mapping)
 
 	def get_host_config(self):
 		self.status = '202 Accepted'
@@ -596,15 +596,15 @@ class DiskMapper:
 			return {"disk" : spare_disk, "storage_server" : server_with_most_spare }
 		return spare_mapping
 
-	def _get_mapping(self, type, key = None):
+	def _get_mapping(self, type, key = None, ignore_bad=True):
 
-		if not self._is_diskmapper_initialized(): 
+		if not self._is_diskmapper_initialized():
 			return False
 
 		f = open(self.mapping_file, 'r')
 		fcntl.flock(f.fileno(), fcntl.LOCK_EX)
 		file_content = pickle.load(f)
-		
+
 		if type == "host":
 			mapping = {}
 			for storage_server in file_content:
@@ -613,10 +613,12 @@ class DiskMapper:
 						if disk_type == "primary" or disk_type == "secondary":
 							host_name = file_content[storage_server][disk][disk_type]
 							status = file_content[storage_server][disk]["status"]
-							if host_name != "spare" and status != "bad":
+							if host_name != "spare" :
 								if host_name not in mapping.keys():
 									mapping[host_name] = {}
-								mapping[host_name].update({disk_type : { "disk" : disk, "status" : status, "storage_server" : storage_server}})
+									if status == "bad" and ignore_bad:
+										continue
+									mapping[host_name].update({disk_type : { "disk" : disk, "status" : status, "storage_server" : storage_server}})
 
 		elif type == "storage_server":
 			mapping = file_content
