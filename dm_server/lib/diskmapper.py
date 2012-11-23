@@ -377,8 +377,10 @@ class DiskMapper:
 		zrt = config["zruntime"]
 		url = os.path.join ('https://api.runtime.zynga.com:8994/', zrt["gameid"], zrt["env"], "current")
 		value = self._curl(url, 200, True)
-		if value != False:
-			value = json.loads(value)
+		if value == False:
+                    logger.error("Failed to get Zruntime data.\nShutting down Disk Mapper.")
+                    exit(1)
+                value = json.loads(value)
 		active_dm = value["output"][zrt["mcs_key_name"]]
 		ip = socket.gethostbyname(socket.gethostname())
 		logger.debug("ip : " + str(ip) + " active_dm : " + str(active_dm));
