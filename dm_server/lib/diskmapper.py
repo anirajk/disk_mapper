@@ -21,7 +21,7 @@ from cgi import parse_qs
 
 logger = logging.getLogger('disk_mapper')
 hdlr = logging.FileHandler('/var/log/disk_mapper.log')
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+formatter = logging.Formatter('%(asctime)s %(process)d %(thread)d %(filename)s %(lineno)d %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
@@ -56,12 +56,13 @@ class DiskMapper:
 			self._start_response()
 			return "Host name " + host_name + " not found in mapping."
 			
+		#logger.debug("Mapping found for " + host_name + " : " + str(mapping))
 		status = None
 		if "primary" in mapping.keys():
 			logger.info("Found primary for " + host_name)
 			storage_server = mapping["primary"]["storage_server"]
 			status = mapping["primary"]["status"]
-			logger.debug("Primary mapping : " + str(mapping["primary"]))
+			#logger.debug("Primary mapping : " + str(mapping["primary"]))
 
 		if status == "bad" or status == None:
 			logger.info("Primary disk is not available or is bad.")
@@ -69,7 +70,7 @@ class DiskMapper:
 				logger.info("Found secondary for " + host_name)
 				storage_server = mapping["secondary"]["storage_server"]
 				status = mapping["secondary"]["status"]
-				logger.debug("Secondary mapping : " + str(mapping["secondary"]))
+				#logger.debug("Secondary mapping : " + str(mapping["secondary"]))
 				if status == "bad":
 					logger.error("Both primary and secondary are bad disks.")
 					self.status = '412 Precondition Failed'
@@ -145,9 +146,11 @@ class DiskMapper:
 		if not self._is_host_initialized(host_name):
 			logger.info("Host : " + host_name + " is not initialized.")
 			logger.info("Initializing primary for " + host_name)
-			self.initialize_host(host_name, "primary", game_id)
+			if self.initialize_host(host_name, "primary", game_id) == False:
+				logger.error("Failed to initialize primary for host : " + host_name)
 			logger.info("Initializing secondary for " + host_name)
-			self.initialize_host(host_name, "secondary", game_id)
+			if self.initialize_host(host_name, "secondary", game_id) == False:
+				logger.error("Failed to initialize primary for host : " + host_name)
 
 		return self.forward_request()
 
@@ -378,9 +381,10 @@ class DiskMapper:
 		url = os.path.join ('https://api.runtime.zynga.com:8994/', zrt["gameid"], zrt["env"], "current")
 		value = self._curl(url, 200, True)
 		if value == False:
-                    logger.error("Failed to get Zruntime data.\nShutting down Disk Mapper.")
-                    exit(1)
-                value = json.loads(value)
+			logger.error("Failed to get Zruntime data.\nShutting down Disk Mapper.")
+			exit(1)
+
+		value = json.loads(value)
 		active_dm = value["output"][zrt["mcs_key_name"]]
 		ip = socket.gethostbyname(socket.gethostname())
 		logger.debug("ip : " + str(ip) + " active_dm : " + str(active_dm));
@@ -600,6 +604,8 @@ class DiskMapper:
 
 	def _get_mapping(self, type, key = None, ignore_bad=True):
 
+		logger.debug("Get mapping for, type : " + type + " key : " + str(key) + " ignore_bad : " + str(ignore_bad))
+
 		if not self._is_diskmapper_initialized():
 			return False
 
@@ -607,6 +613,7 @@ class DiskMapper:
 		fcntl.flock(f.fileno(), fcntl.LOCK_EX)
 		file_content = pickle.load(f)
 
+		#logger.debug("Mapping in file : " + str(file_content))
 		if type == "host":
 			mapping = {}
 			for storage_server in file_content:
@@ -618,9 +625,10 @@ class DiskMapper:
 							if host_name != "spare" :
 								if host_name not in mapping.keys():
 									mapping[host_name] = {}
-									if status == "bad" and ignore_bad:
-										continue
-									mapping[host_name].update({disk_type : { "disk" : disk, "status" : status, "storage_server" : storage_server}})
+									#logger.debug("=========" + disk + disk_type + status + host_name + "==========")
+								if status == "bad" and ignore_bad:
+									continue
+								mapping[host_name].update({disk_type : { "disk" : disk, "status" : status, "storage_server" : storage_server}})
 
 		elif type == "storage_server":
 			mapping = file_content
@@ -646,7 +654,7 @@ class DiskMapper:
 		else:
 			f = open(self.mapping_file, 'w+')
 			
-		#logger.debug("Updating mapping :" + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
+		logger.debug("Updating mapping :" + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
 		fcntl.flock(f.fileno(), fcntl.LOCK_EX)
 		file_content = f.read()
 		if file_content != "":
@@ -657,6 +665,7 @@ class DiskMapper:
 			file_content = {}
 
 		#logger.debug("here with : " + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
+		#logger.debug("Mapping read from file : " + str(file_content))
 		if storage_server in file_content.keys():
 			if disk in file_content[storage_server].keys():
 				#if disk_type in file_content[storage_server][disk].keys()
@@ -667,6 +676,7 @@ class DiskMapper:
 				file_content[storage_server].update({disk : {disk_type : host_name, "status" : status}})
 		else:
 			file_content.update({storage_server : {disk : {disk_type : host_name, "status" : status}}})
+		#logger.debug("Mapping to be written to file : " + str(file_content))
 		f.seek(0, 0)
 		f.truncate()
 		pickle.dump(file_content,f)

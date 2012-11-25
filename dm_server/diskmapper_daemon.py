@@ -7,42 +7,42 @@ from lib.diskmapper import DiskMapper
 
 logger = logging.getLogger('disk_mapper_daemon')
 hdlr = logging.FileHandler('/var/log/disk_mapper.log')
-formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+formatter = logging.Formatter('%(asctime)s %(process)d %(thread)d %(filename)s %(lineno)d %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.INFO)
 
 def is_daemon_stopped():
-	if not os.path.exists("/var/run/disk_mapper.lock"):
-		logger.info("=== Disk Mapper Stopped ===")
-		exit()
+    if not os.path.exists("/var/run/disk_mapper.lock"):
+        logger.info("=== Disk Mapper Stopped ===")
+        exit()
 
 try:
-	logger.info("=== Disk Mapper Started ===")
-	is_daemon_stopped()
-	dm = DiskMapper(None, None)
-	logger.info("Initializing DiskMapper")
-	dm.initialize_diskmapper()
-	logger.info(dm._get_mapping("host"))
-	while True:
-		if dm.is_dm_active() == True:
-			logger.info("====Active Disk Mapper===")
-			logger.info("Polling to enable replication.")
-			is_daemon_stopped()
-			dm.enable_replication()
-			logger.info("Polling for bad disks.")
-			is_daemon_stopped()
-			dm.swap_bad_disk()
+    logger.info("=== Disk Mapper Started ===")
+    is_daemon_stopped()
+    dm = DiskMapper(None, None)
+    logger.info("Initializing DiskMapper")
+    dm.initialize_diskmapper()
+    logger.info(dm._get_mapping("host"))
+    while True:
+        if dm.is_dm_active() == True:
+            logger.info("====Active Disk Mapper===")
+            logger.info("Polling to enable replication.")
+            is_daemon_stopped()
+            dm.enable_replication()
+            logger.info("Polling for bad disks.")
+            is_daemon_stopped()
+            dm.swap_bad_disk()
 
-		logger.info("Polling storage server for config.")
-		is_daemon_stopped()
-		dm.initialize_diskmapper(True)
-		logger.debug(dm._get_mapping("storage_server"))
-		logger.debug("===")
-		logger.debug(dm._get_mapping("host"))
-		time.sleep(5)
+        logger.info("Polling storage server for config.")
+        is_daemon_stopped()
+        dm.initialize_diskmapper(True)
+        logger.debug(dm._get_mapping("storage_server"))
+        logger.debug("===")
+        logger.debug(dm._get_mapping("host"))
+        time.sleep(5)
 except Exception, e:
-	print e
-	logger.error(e)
-	os.remove("/var/run/disk_mapper.lock")
-	raise e
+    print e
+    logger.error(e)
+    os.remove("/var/run/disk_mapper.lock")
+    raise e
