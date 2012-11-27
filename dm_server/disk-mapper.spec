@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.6
+%define branch_version 0.7
 
 Summary:       Disk Mapper
 Name:          disk-mapper

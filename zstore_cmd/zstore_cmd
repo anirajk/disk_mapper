@@ -164,6 +164,7 @@ upload () {
     # If local file exists and md5hash of local and remote file match do not upload again.
     [[ $remote_hash != '' ]] && verified=$(verifyFile "$remote_hash" $file_path) 
     [[ -n $verified ]] && [[ $verified -eq 0 ]] && exit 0
+    [[ $remote_hash == '' ]] && number=$RANDOM && let "number %= 15" && sleep $number
     
     actual_url=$(curl $CURL_PARAM --connect-timeout 60 --max-time 900 --request "POST" "$url")
 

@@ -145,12 +145,18 @@ class DiskMapper:
 
 		if not self._is_host_initialized(host_name):
 			logger.info("Host : " + host_name + " is not initialized.")
-			logger.info("Initializing primary for " + host_name)
-			if self.initialize_host(host_name, "primary", game_id) == False:
-				logger.error("Failed to initialize primary for host : " + host_name)
-			logger.info("Initializing secondary for " + host_name)
-			if self.initialize_host(host_name, "secondary", game_id) == False:
-				logger.error("Failed to initialize primary for host : " + host_name)
+			retries =3
+			while retries > 0:
+				retries = retries - 1
+				logger.info("Initializing primary for " + host_name)
+				if self.initialize_host(host_name, "primary", game_id) == False:
+					logger.error("Failed to initialize primary for host : " + host_name)
+				else:
+					logger.info("Initializing secondary for " + host_name)
+					if self.initialize_host(host_name, "secondary", game_id) == False:
+						logger.error("Failed to initialize primary for host : " + host_name)
+					else:
+						break
 
 		return self.forward_request()
 
@@ -379,10 +385,16 @@ class DiskMapper:
 	def is_dm_active(self):
 		zrt = config["zruntime"]
 		url = os.path.join ('https://api.runtime.zynga.com:8994/', zrt["gameid"], zrt["env"], "current")
-		value = self._curl(url, 200, True)
-		if value == False:
-			logger.error("Failed to get Zruntime data.\nShutting down Disk Mapper.")
-			exit(1)
+		retries = 10
+		while retries > 0:
+			retries = retries - 1
+			value = self._curl(url, 200, True)
+			if value != False:
+				break
+		else:
+			if value == False:
+				logger.error("Failed to get Zruntime data.\nShutting down Disk Mapper.")
+				exit(1)
 
 		value = json.loads(value)
 		active_dm = value["output"][zrt["mcs_key_name"]]

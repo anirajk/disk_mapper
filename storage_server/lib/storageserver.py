@@ -8,8 +8,16 @@ import hashlib
 import json
 import fcntl
 import time
+import logging
 from cgi import parse_qs
 from signal import SIGSTOP, SIGCONT
+
+logger = logging.getLogger('storage_server')
+hdlr = logging.FileHandler('/var/log/storage_server.log') 
+formatter = logging.Formatter('%(asctime)s %(process)d %(thread)d %(filename)s %(lineno)d %(levelname)s %(message)s')
+hdlr.setFormatter(formatter)
+logger.addHandler(hdlr)
+logger.setLevel(logging.INFO)
 
 
 class StorageServer:
@@ -27,10 +35,13 @@ class StorageServer:
         path = self.environ["PATH_TRANSLATED"]
 
         if not os.path.exists(path):
+            logger.debug("file_path : " + path)
             self.status = '400 Bad Request'
+            logger.debug("File not found : " + path)
             files = "File not found."
         elif not os.access(path, os.R_OK):
             self.status = '403 Forbidden'
+            logger.debug("Cannot access file : " + path)
             files = "Cannot access file."
         else:
             file_list = self._file_iterater(path)
@@ -42,6 +53,7 @@ class StorageServer:
     def add_entry(self):
         self.status = '202 Accepted'
 
+        logger.debug("query : " + self.query_string)
         if "type=bad_disk" in self.query_string:
             file = "/var/tmp/disk_mapper/bad_disk"
         elif "type=dirty_files" in self.query_string:
@@ -52,6 +64,7 @@ class StorageServer:
             self.status = '400 Bad Request'
             self._start_response()
             return "Invalid file type"
+            
 
         qs = parse_qs(self.query_string)
         try:
@@ -75,6 +88,7 @@ class StorageServer:
     def remove_entry(self):
         self.status = '202 Accepted'
 
+        logger.debug("query : " + self.query_string)
         if "type=bad_disk" in self.query_string:
             file = "/var/tmp/disk_mapper/bad_disk"
         elif "type=dirty_files" in self.query_string:
@@ -256,17 +270,20 @@ class StorageServer:
 
         # aria2c --dir=/mydownloads --follow-torrent=mem --seed-time=0 --remove-control-file http://10.36.168.173/torrent/1347780080.torrent
         self.pause_coalescer(file_path)
-        cmd = 'aria2c --dir=' + os.path.dirname(file_path + "/../") + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --bt-stop-timeout=300 --remove-control-file --allow-overwrite=true ' + torrent_url  
+        cmd = 'aria2c -V --dir=' + os.path.dirname(file_path) + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --bt-stop-timeout=300 --remove-control-file ' + torrent_url  
+        logger.debug("cmd to start download : " + cmd)
         self.status = '500 Internal Server Error'
-        if os.system(cmd):
-            print cmd
+        error_code = os.system(cmd)
+        if error_code:
+            logger.error("Failed to start download : " + cmd + " error code : " + error_code)
             self._start_response()
             self.resume_coalescer(file_path)
             return "Failed to start download."
 
         cmd1 = "zstore_cmd del " + torrent_url.replace("http://", "s3://") 
+        logger.debug("cmd to del torrent file : " + cmd1)
         if os.system(cmd1):
-            print cmd1
+            logger.error("Failed to delete torrent file : " + cmd1)
             self._start_response()
             return "Failed to remove torrent file."
 
@@ -286,9 +303,10 @@ class StorageServer:
             return "Invalid arguments."
         torrent_folder = "/var/www/html/torrent"
 
-        ps_cmd = 'ps ax | grep "aria2c -V" | grep "' + os.path.dirname(file_path + "/../") + '" | grep -v "follow-torrent"'
-        if os.system(ps_cmd) == 1:
-            print ps_cmd
+        ps_cmd = 'ps ax | grep "aria2c -V" | grep "' + os.path.dirname(file_path + "/..") + '" | grep -v "follow-torrent"'
+        logger.debug("ps cmd : " + ps_cmd)
+        if os.system(ps_cmd) == 0:
+            logger.error(ps_cmd)
             self.status = '200 OK'
             self._start_response()
             return "True"
@@ -300,8 +318,9 @@ class StorageServer:
         torrent_path = os.path.join(torrent_folder, torrent_file_name)
         # btmakemetafile.py http://10.34.231.215:6969/announce /home/sqadir/backup/ --target "/tmp/back_up.torrent"
         cmd = 'btmakemetafile.py http://' + self.environ["SERVER_ADDR"] + ':6969/announce ' + file_path + ' --target ' + torrent_path
+        logger.debug("Create torrent cmd : " + cmd)
         if os.system(cmd):
-            print cmd
+            logger.error("Failed to create torrent : " + cmd)
             self.status = '500 Internal Server Error'
             self._start_response()
             return "Failed to create torrent."
@@ -309,8 +328,9 @@ class StorageServer:
         # aria2c -V --dir=/home/sqadir /var/www/html/torrent/bit.torrent --seed-ratio=1.0
         self.pause_coalescer(file_path)
         cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path + "/../") + " " + torrent_path + ' --seed-ratio=1.0 -D --remove-control-file --bt-stop-timeout=300 --on-download-stop="/opt/storage_server/hook.sh"' 
+        logger.debug("cmd to seed torrent : " + cmd1)
         if os.system(cmd1):
-            print cmd1
+            logger.error("Failed to seed : " +cmd1)
             self.resume_coalescer(file_path)
             self.status = '500 Internal Server Error'
             self._start_response()
@@ -328,8 +348,14 @@ class StorageServer:
         type =  qs["type"][0]
         game_id =  qs["game_id"][0]
         disk =  qs["disk"][0]
+        
+        type_path = os.path.join("/", disk, type)
+        if os.listdir(type_path) != []:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Disk is not spare."
 
-        actual_path = os.path.join("/", disk, type, host_name)
+        actual_path = os.path.join(type_path, host_name)
         if not os.path.isdir(actual_path):
             os.makedirs(actual_path)
         
@@ -349,7 +375,7 @@ class StorageServer:
         return "Host initialized"
 
     def save_to_disk(self):
-        self.status = '200 OK'
+        self.status = '202 Accepted'
         path = self.environ["PATH_TRANSLATED"]
         path_info = self.environ["PATH_INFO"]
 
@@ -384,8 +410,10 @@ class StorageServer:
         actual_path_prefix = host_path.replace("/var/www/html/membase_backup", "")
         actual_path = path.replace(host_symlink, actual_path_prefix)
         dirty_file = os.path.join(host_symlink, "..", "..", "dirty")
-        self._append_to_file(dirty_file, os.path.dirname(actual_path))
+        #self._append_to_file(dirty_file, os.path.dirname(actual_path))
+        self._append_to_file(dirty_file, actual_path)
 
+        self.status = '200 OK'
         self._start_response()
         return ["Saved file to disk"]
 

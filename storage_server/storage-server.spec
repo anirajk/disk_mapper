@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.5
+%define branch_version 0.6
 
 Summary:       Setup storage server
 Name:          storage-server
