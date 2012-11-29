@@ -99,6 +99,10 @@ mkdir /var/tmp/disk_mapper
 touch /var/tmp/disk_mapper/bad_disk
 chown -R apache /var/tmp/disk_mapper
 
+# Log file.
+touch /var/log/storage_server.log
+chown apache /var/log/storage_server.log
+
 # Restart apache.
 /etc/init.d/httpd restart
 
