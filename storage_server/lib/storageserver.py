@@ -7,17 +7,18 @@ import glob
 import hashlib
 import json
 import fcntl
+import subprocess
 import time
 import logging
 from cgi import parse_qs
 from signal import SIGSTOP, SIGCONT
 
 logger = logging.getLogger('storage_server')
-hdlr = logging.FileHandler('/var/log/storage_server.log') 
+hdlr = logging.FileHandler('/var/log/storage_server.log')
 formatter = logging.Formatter('%(asctime)s %(process)d %(thread)d %(filename)s %(lineno)d %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 class StorageServer:
@@ -34,14 +35,14 @@ class StorageServer:
         self.status = '202 Accepted'
         path = self.environ["PATH_TRANSLATED"]
 
+        logger.debug("file_path : " + path)
         if not os.path.exists(path):
-            logger.debug("file_path : " + path)
-            self.status = '400 Bad Request'
             logger.debug("File not found : " + path)
+            self.status = '400 Bad Request'
             files = "File not found."
         elif not os.access(path, os.R_OK):
-            self.status = '403 Forbidden'
             logger.debug("Cannot access file : " + path)
+            self.status = '403 Forbidden'
             files = "Cannot access file."
         else:
             file_list = self._file_iterater(path)
@@ -64,7 +65,6 @@ class StorageServer:
             self.status = '400 Bad Request'
             self._start_response()
             return "Invalid file type"
-            
 
         qs = parse_qs(self.query_string)
         try:
@@ -267,22 +267,40 @@ class StorageServer:
             self.status = '400 Bad Request'
             self._start_response()
             return "Invalid arguments."
+        #ps_cmd = 'ps ax | grep "aria2c -V" | grep "' + os.path.dirname(file_path + "/..") + '" | grep "follow-torrent"'
+        #logger.debug("ps cmd : " + ps_cmd)
+        #ps_status = subprocess.call(ps_cmd, shell=True)
+        
+        #if ps_status == 1792:
+        #    logger.debug("Torrent already downloaded.")
+        #    return True
+
+        #if ps_status != 0:
+        #    logger.error(ps_cmd)
+        #    self.status = '200 OK'
+        #    self._start_response()
+        #    return "running"
+
 
         # aria2c --dir=/mydownloads --follow-torrent=mem --seed-time=0 --remove-control-file http://10.36.168.173/torrent/1347780080.torrent
         self.pause_coalescer(file_path)
-        cmd = 'aria2c -V --dir=' + os.path.dirname(file_path) + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --bt-stop-timeout=300 --remove-control-file ' + torrent_url  
+        cmd = 'aria2c -V --dir=' + os.path.dirname(file_path) + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --allow-overwrite=true --remove-control-file ' + torrent_url + ' --file-allocation=none --bt-stop-timeout=30'
         logger.debug("cmd to start download : " + cmd)
         self.status = '500 Internal Server Error'
-        error_code = os.system(cmd)
-        if error_code:
-            logger.error("Failed to start download : " + cmd + " error code : " + error_code)
+        error_code = subprocess.call(cmd, shell=True)
+        #if error_code == 768 or error_code == 1792:
+        #   return True
+
+        logger.debug("Return code of seed cmd : " + str(error_code))
+        if error_code != 0:
+            logger.error("Failed to start download : " + cmd + " error code : " + str(error_code))
             self._start_response()
             self.resume_coalescer(file_path)
             return "Failed to start download."
 
         cmd1 = "zstore_cmd del " + torrent_url.replace("http://", "s3://") 
         logger.debug("cmd to del torrent file : " + cmd1)
-        if os.system(cmd1):
+        if subprocess.call(cmd1, shell=True):
             logger.error("Failed to delete torrent file : " + cmd1)
             self._start_response()
             return "Failed to remove torrent file."
@@ -303,13 +321,13 @@ class StorageServer:
             return "Invalid arguments."
         torrent_folder = "/var/www/html/torrent"
 
-        ps_cmd = 'ps ax | grep "aria2c -V" | grep "' + os.path.dirname(file_path + "/..") + '" | grep -v "follow-torrent"'
-        logger.debug("ps cmd : " + ps_cmd)
-        if os.system(ps_cmd) == 0:
-            logger.error(ps_cmd)
-            self.status = '200 OK'
-            self._start_response()
-            return "True"
+        #ps_cmd = 'ps ax | grep "aria2c -V" | grep "' + os.path.dirname(file_path + "/..") + '" | grep -v "follow-torrent"'
+        #logger.debug("ps cmd : " + ps_cmd)
+        #if subprocess.call(ps_cmd, shell=True) == 0:
+        #    logger.error(ps_cmd)
+        #    self.status = '200 OK'
+        #    self._start_response()
+        #    return "True"
 
         if not os.path.exists(torrent_folder):
             os.makedirs(torrent_folder)
@@ -319,19 +337,29 @@ class StorageServer:
         # btmakemetafile.py http://10.34.231.215:6969/announce /home/sqadir/backup/ --target "/tmp/back_up.torrent"
         cmd = 'btmakemetafile.py http://' + self.environ["SERVER_ADDR"] + ':6969/announce ' + file_path + ' --target ' + torrent_path
         logger.debug("Create torrent cmd : " + cmd)
-        if os.system(cmd):
+        cmd_status = subprocess.call(cmd, shell=True)
+        logger.debug("Create torrent status : " + str(cmd_status))
+        if cmd_status:
             logger.error("Failed to create torrent : " + cmd)
+            if os.path.exists(torrent_path):
+                os.remove(torrent_path)
             self.status = '500 Internal Server Error'
             self._start_response()
             return "Failed to create torrent."
 
         # aria2c -V --dir=/home/sqadir /var/www/html/torrent/bit.torrent --seed-ratio=1.0
+        # aria2c -V --dir=/data_4/primary/game-mb-1/zc1/daily /var/www/html/torrent/1354155230.torrent --seed-ratio=0.0 --remove-control-file  --on-download-stop="/opt/storage_server/hook.sh" --stop=45 -D
         self.pause_coalescer(file_path)
-        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path + "/../") + " " + torrent_path + ' --seed-ratio=1.0 -D --remove-control-file --bt-stop-timeout=300 --on-download-stop="/opt/storage_server/hook.sh"' 
+        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=0.0 --remove-control-file --stop=120 --on-download-stop="/opt/storage_server/hook.sh" -D' 
         logger.debug("cmd to seed torrent : " + cmd1)
-        if os.system(cmd1):
-            logger.error("Failed to seed : " +cmd1)
+        cmd1_status = subprocess.call(cmd1, shell=True)
+        logger.debug("Status of seed cmd : " + str(cmd1_status))
+        if cmd1_status:
+            logger.error("Failed to seed : " + cmd1 + " return code" + str(cmd1_status))
             self.resume_coalescer(file_path)
+            if os.path.exists(torrent_path):
+                os.remove(torrent_path)
+
             self.status = '500 Internal Server Error'
             self._start_response()
             return "Failed to seed file."
@@ -375,7 +403,7 @@ class StorageServer:
         return "Host initialized"
 
     def save_to_disk(self):
-        self.status = '202 Accepted'
+        self.status = '200 OK'
         path = self.environ["PATH_TRANSLATED"]
         path_info = self.environ["PATH_INFO"]
 
@@ -401,6 +429,7 @@ class StorageServer:
 
         file_chunk = self.environ['wsgi.input'].read(last_chunk_size)
         f.write(file_chunk)
+        os.fsync(f)
         f.close()
 
         document_root = self.environ["DOCUMENT_ROOT"]
@@ -413,7 +442,6 @@ class StorageServer:
         #self._append_to_file(dirty_file, os.path.dirname(actual_path))
         self._append_to_file(dirty_file, actual_path)
 
-        self.status = '200 OK'
         self._start_response()
         return ["Saved file to disk"]
 

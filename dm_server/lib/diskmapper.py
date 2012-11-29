@@ -15,6 +15,7 @@ import threading
 import socket
 import logging
 import subprocess
+from flock import flock
 from signal import SIGSTOP, SIGCONT
 from config import config
 from cgi import parse_qs
@@ -30,6 +31,7 @@ class DiskMapper:
 
 	def __init__(self, environ, start_response):
 		self.mapping_file = '/var/tmp/disk_mapper/host.mapping'
+		self.host_init_lock = '/var/tmp/disk_mapper/host.mapping.lock'
 		self.bad_servers = []
 		if environ != None:
 			self.environ  = environ
@@ -145,7 +147,7 @@ class DiskMapper:
 
 		if not self._is_host_initialized(host_name):
 			logger.info("Host : " + host_name + " is not initialized.")
-			retries =3
+			retries = 5
 			while retries > 0:
 				retries = retries - 1
 				logger.info("Initializing primary for " + host_name)
@@ -157,11 +159,19 @@ class DiskMapper:
 						logger.error("Failed to initialize primary for host : " + host_name)
 					else:
 						break
+				time.sleep(5)
 
 		return self.forward_request()
 
 	def initialize_host(self, host_name, type, game_id, update_mapping=True):
 		
+		while True:
+			logger.debug("Getting lock to initialized " + host_name)
+			lock = flock(self.host_init_lock).acquire()
+			if lock:
+				logger.debug("Got lock to initialize " + host_name)
+				break
+
 		logger.debug("Initialize host : " + host_name + " " + type + " " + game_id + " " + str(update_mapping))
 		mapping = self._get_mapping("host", host_name)
 
@@ -181,6 +191,7 @@ class DiskMapper:
 		logger.debug("spare : " + str(spare))
 		if spare == False:
 			logger.error(type + " spare not found for " + host_name)
+			lock.release()
 			return False
 
 		spare_server  = spare["storage_server"]
@@ -188,13 +199,16 @@ class DiskMapper:
 		spare_config = self._get_server_config(spare_server)
 		if spare_config[spare_disk][type] != "spare":
 			logger.debug("Spare disk is no more a spare.")
+			lock.release()
 			return False
 
 		if self._initialize_host(spare_server, host_name, type, game_id, spare_disk, update_mapping) != False:
+			lock.release()
 			if update_mapping == False:
 				return spare
 			return True
 
+		lock.release()
 		return False
 
 	def swap_bad_disk(self, storage_servers=None):
@@ -306,6 +320,7 @@ class DiskMapper:
 		sorted_files = self._uniq(files)
 		[ x.strip() for x in sorted_files ]
 		for file in sorted_files:
+			time.sleep(3)
 			if file == "":
 				continue
 			cp_from_detail = file.split("/")
@@ -340,8 +355,8 @@ class DiskMapper:
 				logger.error("Failed to get torrent url for " + storage_server + ":" + file)
 				return False
 
-				
 			if self._start_download(cp_to_server, cp_to_file, torrent_url) == True:
+				logger.info("Replication completed : " + storage_server + ":" + file)
 				self._remove_entry(cp_from_server, file, "dirty_files")
 			else:
 				logger.error("Failed to start download to " + cp_to_server + ":" + cp_to_file)
