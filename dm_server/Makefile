@@ -3,6 +3,7 @@ FILES=__init__.py\
  config.py\
  diskmapper_daemon.py\
  lib/diskmapper.py\
+ lib/flock.py\
  lib/urlmapper.py\
  config/http_disk_mapper.conf\
  init.d/disk_mapper\
