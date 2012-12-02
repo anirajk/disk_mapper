@@ -38,6 +38,9 @@ def index(environ, start_response):
         if "get_mtime" in action:
             return ss.get_mtime()
 
+        if "get_game_id" in action:
+            return ss.get_game_id()
+
         if "make_spare" in action:
             return ss.make_spare()
 

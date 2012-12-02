@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.6
+%define branch_version 0.7
 %define _unpackaged_files_terminate_build 0
 
 Summary:       Setup storage server
@@ -123,6 +123,9 @@ chown -R blobrestore /home/blobrestore/
 
 
 %changelog
+
+* Wed Dec 2 2012 - sqadir@zynga.com
+- SEG-10426 - Added function to return game_id for a given host_name.
 
 * Wed Nov 21 2012 - sqadir@zynga.com
 - Fixing filename not appended to url issue (zstore_cmd)

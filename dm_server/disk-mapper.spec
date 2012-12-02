@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.7
+%define branch_version 0.8
 %define _unpackaged_files_terminate_build 0
 
 Summary:       Disk Mapper
@@ -88,6 +88,10 @@ chown -R apache /var/www/html
 %postun
 
 %changelog
+
+* Sun Dec 2 2012 - sqadir@zynga.com
+
+- SEG-10426 - Get game ID from replica, instead of host name.
 
 * Wed Nov 22 2012 - sqadir@zynga.com
 

@@ -577,3 +577,29 @@ class StorageServer:
             return False
         else:
             return False
+
+    def get_game_id(self):
+        self.status = '202 Accepted'
+        qs = parse_qs(self.query_string)
+        try:
+            host_name =  qs["host_name"][0]
+        except KeyError:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid arguments."
+
+        document_root = self.environ["DOCUMENT_ROOT"]
+
+        self.status = "200 OK"
+        self._start_response()
+
+        for subfolders in os.listdir(document_root):
+            full_path = os.path.join(document_root, subfolders)
+            if os.path.isdir(full_path):
+                for file in os.listdir(full_path):
+                    if file == host_name:
+                        return subfolders
+
+        self.status = "404 Not Found"
+        self._start_response()
+        return "False"

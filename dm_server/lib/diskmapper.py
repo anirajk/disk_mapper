@@ -254,7 +254,7 @@ class DiskMapper:
 					host_name = server_config[disk][type]
 					self._update_mapping(storage_server, disk, type, host_name, status)
 					if host_name != "spare":
-						game_id = host_name.split("-")[0]
+						
 						if type == "primary":
 							cp_from_type = "secondary"
 						elif type == "secondary":
@@ -268,6 +268,18 @@ class DiskMapper:
 						if type in mapping.keys():
 							continue
 
+						try:
+							cp_from_server = mapping[cp_from_type]["storage_server"]
+							cp_from_disk = mapping[cp_from_type]["disk"]
+							cp_from_file = os.path.join("/", cp_from_disk, cp_from_type, host_name)
+						except KeyError:
+							continue
+
+						game_id = self._get_game_id(host_name, cp_from_server)
+						if game_id == False:
+							logger.error("Failed to get mapping for " + host_name)
+							continue
+
 						spare = self.initialize_host(host_name, type, game_id, False)
 						
 						if spare == False:
@@ -278,13 +290,6 @@ class DiskMapper:
 						cp_to_disk = spare["disk"]
 						cp_to_type = type
 						cp_to_file = os.path.join("/", cp_to_disk, cp_to_type, host_name)
-
-						try:
-							cp_from_server = mapping[cp_from_type]["storage_server"]
-							cp_from_disk = mapping[cp_from_type]["disk"]
-							cp_from_file = os.path.join("/", cp_from_disk, cp_from_type, host_name)
-						except KeyError:
-							continue
 
 						torrent_url = self._create_torrent(cp_from_server, cp_from_file)
 						if torrent_url == False:
@@ -510,6 +515,13 @@ class DiskMapper:
 		value = self._curl(url, 200)
 		if value != False:
 			return json.loads(value)
+		return False
+
+	def _get_game_id(self, host_name, storage_server):
+		url = 'http://' + storage_server + '/api?action=get_game_id&host_name=' + host_name
+		value = self._curl(url, 200)
+		if value != False:
+			return value
 		return False
 
 	def _get_server_config(self, storage_server):
