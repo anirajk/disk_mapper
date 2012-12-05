@@ -15,7 +15,6 @@ import threading
 import socket
 import logging
 import subprocess
-from flock import flock
 from signal import SIGSTOP, SIGCONT
 from config import config
 from cgi import parse_qs
@@ -31,7 +30,8 @@ class DiskMapper:
 
 	def __init__(self, environ, start_response):
 		self.mapping_file = '/var/tmp/disk_mapper/host.mapping'
-		self.host_init_lock = '/var/tmp/disk_mapper/host.mapping.lock'
+		self.host_init_lock = '/var/tmp/disk_mapper/host.init.lock'
+		self.mapping_lock = '/var/tmp/disk_mapper/host.mapping.lock'
 		self.bad_servers = []
 		if environ != None:
 			self.environ  = environ
@@ -165,12 +165,8 @@ class DiskMapper:
 
 	def initialize_host(self, host_name, type, game_id, update_mapping=True):
 		
-		while True:
-			logger.debug("Getting lock to initialized " + host_name)
-			lock = flock(self.host_init_lock).acquire()
-			if lock:
-				logger.debug("Got lock to initialize " + host_name)
-				break
+		lockfd = open(self.host_init_lock, 'w')
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
 
 		logger.debug("Initialize host : " + host_name + " " + type + " " + game_id + " " + str(update_mapping))
 		mapping = self._get_mapping("host", host_name)
@@ -191,7 +187,8 @@ class DiskMapper:
 		logger.debug("spare : " + str(spare))
 		if spare == False:
 			logger.error(type + " spare not found for " + host_name)
-			lock.release()
+			fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
+	        lockfd.close()
 			return False
 
 		spare_server  = spare["storage_server"]
@@ -199,16 +196,19 @@ class DiskMapper:
 		spare_config = self._get_server_config(spare_server)
 		if spare_config[spare_disk][type] != "spare":
 			logger.debug("Spare disk is no more a spare.")
-			lock.release()
+			fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
+        	lockfd.close()
 			return False
 
 		if self._initialize_host(spare_server, host_name, type, game_id, spare_disk, update_mapping) != False:
-			lock.release()
+			fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
+	        lockfd.close()
 			if update_mapping == False:
 				return spare
 			return True
 
-		lock.release()
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
+        lockfd.close()
 		return False
 
 	def swap_bad_disk(self, storage_servers=None):
@@ -648,8 +648,9 @@ class DiskMapper:
 		if not self._is_diskmapper_initialized():
 			return False
 
+		lockfd = open(self.mapping_lock, 'w')
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
 		f = open(self.mapping_file, 'r')
-		fcntl.flock(f.fileno(), fcntl.LOCK_EX)
 		file_content = pickle.load(f)
 
 		#logger.debug("Mapping in file : " + str(file_content))
@@ -673,8 +674,9 @@ class DiskMapper:
 			mapping = file_content
 
 
-		fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 		f.close()
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
+		lockfd.close()
 
 		if key == None:
 			return mapping
@@ -688,13 +690,16 @@ class DiskMapper:
 		self.start_response(self.status, self.response_headers)
 
 	def _update_mapping(self, storage_server, disk, disk_type, host_name, status="good"):
+
+		lockfd = open(self.mapping_lock, 'w')
+        fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+
 		if os.path.exists(self.mapping_file):
 			f = open(self.mapping_file, 'r+')
 		else:
 			f = open(self.mapping_file, 'w+')
 			
 		logger.debug("Updating mapping :" + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
-		fcntl.flock(f.fileno(), fcntl.LOCK_EX)
 		file_content = f.read()
 		if file_content != "":
 			f.seek(0, 0)
@@ -725,8 +730,9 @@ class DiskMapper:
 		if verify_content != file_content:
 			logger.error("Failed to update mapping for " + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
 		os.fsync(f)
-		fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 		f.close()
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
+        lockfd.close()
 		return True
 
 	def _uniq(self, input):
