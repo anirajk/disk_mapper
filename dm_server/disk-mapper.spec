@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.8
+%define branch_version 0.9
 %define _unpackaged_files_terminate_build 0
 
 Summary:       Disk Mapper
@@ -88,6 +88,10 @@ chown -R apache /var/www/html
 %postun
 
 %changelog
+
+* Wed Dec 5 2012 - sqadir@zynga.com
+
+- SEG-10428 - Use write locks.
 
 * Sun Dec 2 2012 - sqadir@zynga.com
 
