@@ -147,19 +147,29 @@ class DiskMapper:
 
 		if not self._is_host_initialized(host_name):
 			logger.info("Host : " + host_name + " is not initialized.")
+
+			primary_initialized = False
+
 			retries = 5
 			while retries > 0:
 				retries = retries - 1
 				logger.info("Initializing primary for " + host_name)
-				if self.initialize_host(host_name, "primary", game_id) == False:
+				primary_initialized = self.initialize_host(host_name, "primary", game_id)
+				if primary_initialized == False:
 					logger.error("Failed to initialize primary for host : " + host_name)
+					time.sleep(5)
 				else:
+					break
+				
+			if primary_initialized == True:
+				retries = 5
+				while retries > 0:
 					logger.info("Initializing secondary for " + host_name)
 					if self.initialize_host(host_name, "secondary", game_id) == False:
 						logger.error("Failed to initialize primary for host : " + host_name)
+						time.sleep(5)
 					else:
 						break
-				time.sleep(5)
 
 		return self.forward_request()
 
@@ -188,7 +198,7 @@ class DiskMapper:
 		if spare == False:
 			logger.error(type + " spare not found for " + host_name)
 			fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-	        lockfd.close()
+			lockfd.close()
 			return False
 
 		spare_server  = spare["storage_server"]
@@ -197,18 +207,18 @@ class DiskMapper:
 		if spare_config[spare_disk][type] != "spare":
 			logger.debug("Spare disk is no more a spare.")
 			fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-        	lockfd.close()
+			lockfd.close()
 			return False
 
 		if self._initialize_host(spare_server, host_name, type, game_id, spare_disk, update_mapping) != False:
 			fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-	        lockfd.close()
+			lockfd.close()
 			if update_mapping == False:
 				return spare
 			return True
 
 		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-        lockfd.close()
+		lockfd.close()
 		return False
 
 	def swap_bad_disk(self, storage_servers=None):
@@ -692,7 +702,7 @@ class DiskMapper:
 	def _update_mapping(self, storage_server, disk, disk_type, host_name, status="good"):
 
 		lockfd = open(self.mapping_lock, 'w')
-        fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
 
 		if os.path.exists(self.mapping_file):
 			f = open(self.mapping_file, 'r+')
@@ -732,7 +742,7 @@ class DiskMapper:
 		os.fsync(f)
 		f.close()
 		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-        lockfd.close()
+		lockfd.close()
 		return True
 
 	def _uniq(self, input):
