@@ -72,9 +72,9 @@ list () {
     [[ $RECURSIVE = "true" ]] && url="$url&recursive=true"
 
     # Execute curl
-	curl_out=$(curl $CURL_PARAM -L --connect-timeout 15 --max-time 120 "$url" )
+    curl_out=$(curl $CURL_PARAM -L --connect-timeout 15 --max-time 120 "$url" )
     curl_status=$?
-	echo "$curl_out" | grep "s3://"
+    echo "$curl_out" | grep "s3://"
     [[ $curl_status -eq 22 ]] && exit 0
     exit $curl_status
 }
@@ -111,6 +111,8 @@ download () {
     [ -d "$dir_path" ] || mkdir -p "$dir_path"
 
     remote_hash=$(curl $CURL_PARAM -iL --connect-timeout 15 --max-time 120 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    [[ -z $remote_hash ]] && exit 1
+
 
     # If local file exists and  md5hash of local and remote file match do not download again.
     [[ -f $file_path ]] && verified=$(verifyFile $remote_hash $file_path) 
@@ -171,7 +173,7 @@ upload () {
     
     actual_url=$(curl $CURL_PARAM --connect-timeout 15 --max-time 120 --request "POST" "$url")
 
-	# Append file name if not specified.
+    # Append file name if not specified.
     [[ ${actual_url: -1} = "/" ]] && actual_url="$actual_url$file_name"
 
     # Execute curl
