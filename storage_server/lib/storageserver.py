@@ -349,7 +349,16 @@ class StorageServer:
 
         # aria2c -V --dir=/home/sqadir /var/www/html/torrent/bit.torrent --seed-ratio=1.0
         # aria2c -V --dir=/data_4/primary/game-mb-1/zc1/daily /var/www/html/torrent/1354155230.torrent --seed-ratio=0.0 --remove-control-file  --on-download-stop="/opt/storage_server/hook.sh" --stop=45 -D
-        self.pause_coalescer(file_path)
+        try:
+            self.pause_coalescer(file_path)
+        except:
+            logger.error("Failed to pause coalescer.")
+            if os.path.exists(torrent_path):
+                os.remove(torrent_path)
+            self.status = '500 Internal Server Error'
+            self._start_response()
+            return "Failed to pause coalescer."
+
         cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=0.0 --remove-control-file --stop=120 --on-download-stop="/opt/storage_server/hook.sh" -D' 
         logger.debug("cmd to seed torrent : " + cmd1)
         cmd1_status = subprocess.call(cmd1, shell=True)

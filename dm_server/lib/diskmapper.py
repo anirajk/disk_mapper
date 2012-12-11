@@ -591,10 +591,9 @@ class DiskMapper:
 		return True
 
 	def _is_host_initialized(self, host_name):
-		if not self._get_mapping ("host", host_name):
+		if self._get_mapping ("host", host_name, False) == False:
 			return False
 		return True
-		
 
 	def _is_bad_disk(self, type):
 		try:

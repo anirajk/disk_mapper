@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.9
+%define branch_version 0.10
 %define _unpackaged_files_terminate_build 0
 
 Summary:       Disk Mapper
@@ -89,28 +89,25 @@ chown -R apache /var/www/html
 
 %changelog
 
-* Wed Dec 5 2012 - sqadir@zynga.com
+* Tue Dec 11 2012 - sqadir@zynga.com
+- SEG-10475 - Don't initialize disks for hosts that have primary and secondary disks as bad.
 
+* Wed Dec 5 2012 - sqadir@zynga.com
 - SEG-10428 - Use write locks.
 
 * Sun Dec 2 2012 - sqadir@zynga.com
-
 - SEG-10426 - Get game ID from replica, instead of host name.
 
 * Wed Nov 22 2012 - sqadir@zynga.com
-
 - Added function to list bad disk too, for QA automation.
 
 * Wed Nov 21 2012 - sqadir@zynga.com
-
 - Added function to list entire mapping for QA automation.
 
 * Wed Nov 21 2012 - sqadir@zynga.com
-
 - Changed to handle MCS key, only if its a string.
 
 * Wed Nov 21 2012 - sqadir@zynga.com
-
 - Bug fixes.
 - SEG-10393 - Mapping not getting updated because of file sync issues.
 - SEG-10391 - Unable to start disk mapper daemon.
