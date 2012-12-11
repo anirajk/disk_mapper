@@ -72,9 +72,9 @@ list () {
     [[ $RECURSIVE = "true" ]] && url="$url&recursive=true"
 
     # Execute curl
-	curl_out=$(curl $CURL_PARAM -L --connect-timeout 60 --max-time 900 "$url" )
+	curl_out=$(curl $CURL_PARAM -L --connect-timeout 15 --max-time 120 "$url" )
     curl_status=$?
-	echo $curl_out | grep "s3://"
+	echo "$curl_out" | grep "s3://"
     [[ $curl_status -eq 22 ]] && exit 0
     exit $curl_status
 }
@@ -110,7 +110,7 @@ download () {
     # Create directory if directory does not exist.
     [ -d "$dir_path" ] || mkdir -p "$dir_path"
 
-    remote_hash=$(curl $CURL_PARAM -iL --connect-timeout 60 --max-time 900 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    remote_hash=$(curl $CURL_PARAM -iL --connect-timeout 15 --max-time 120 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
 
     # If local file exists and  md5hash of local and remote file match do not download again.
     [[ -f $file_path ]] && verified=$(verifyFile $remote_hash $file_path) 
@@ -162,24 +162,24 @@ upload () {
     # If remote path does not have file name, append file name to remote path
     [[ ${url: -1} = "/" ]] && file_name=$(basename $file_path) && url="$url$file_name"
 
-    remote_hash=$(curl $CURL_PARAM -iL --connect-timeout 60 --max-time 900 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    remote_hash=$(curl $CURL_PARAM -iL --connect-timeout 15 --max-time 120 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
 
     # If local file exists and md5hash of local and remote file match do not upload again.
     [[ $remote_hash != '' ]] && verified=$(verifyFile "$remote_hash" $file_path) 
     [[ -n $verified ]] && [[ $verified -eq 0 ]] && exit 0
     [[ $remote_hash == '' ]] && number=$RANDOM && let "number %= 15" && sleep $number
     
-    actual_url=$(curl $CURL_PARAM --connect-timeout 60 --max-time 900 --request "POST" "$url")
+    actual_url=$(curl $CURL_PARAM --connect-timeout 15 --max-time 120 --request "POST" "$url")
 
 	# Append file name if not specified.
     [[ ${actual_url: -1} = "/" ]] && actual_url="$actual_url$file_name"
 
     # Execute curl
-    curl $CURL_PARAM -L --connect-timeout 60 --max-time 900 --request "POST" --data-binary "@$file_path" "$actual_url"
+    curl $CURL_PARAM -L --connect-timeout 15 --max-time 120 --request "POST" --data-binary "@$file_path" "$actual_url"
     [[ $? -ne 0 ]] && exit 1
 
     # Check if md5hash of local and remote file match.
-    remote_hash=$(curl $CURL_PARAM -iL --connect-timeout 60 --max-time 900 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
+    remote_hash=$(curl $CURL_PARAM -iL --connect-timeout 15 --max-time 120 "$url?action=list" | grep Etag | sed 's/Etag: //' | tr -d \\r)
     verified=$(verifyFile $remote_hash $file_path)
     exit $verified
 }
@@ -195,7 +195,7 @@ delete () {
     url=$(getUrlPrefix $path)
 
     # Execute curl
-    curl $CURL_PARAM -L --connect-timeout 60 --max-time 900 -X "DELETE" "$url"
+    curl $CURL_PARAM -L --connect-timeout 15 --max-time 120 -X "DELETE" "$url"
     exit $?
 }
 
