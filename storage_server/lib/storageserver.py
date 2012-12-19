@@ -79,6 +79,7 @@ class StorageServer:
                 file = partition_name + "/" + file_name
                 self._append_to_file(file, entry)
         else:
+            self._kill_torrent(entry)
             self._append_to_file(file, entry)
 
         self.status = '200 OK'
@@ -559,12 +560,16 @@ class StorageServer:
         master_pid = self._get_value_pid_file(master_merge_pfile)
         try:
             if daily_pid is not False:
-                os.kill(int(daily_pid), SIGSTOP)
+                #os.kill(int(daily_pid), SIGSTOP)
+                subprocess.call("sudo kill -SIGSTOP " + daily_pid , shell=True)
             if master_pid is not False:
-                os.kill(int(master_pid), SIGSTOP)
+                #os.kill(int(master_pid), SIGSTOP)
+                subprocess.call("sudo kill -SIGSTOP " + master_pid , shell=True)
         except:
-            os.kill(int(daily_pid), SIGCONT)
-            os.kill(int(master_pid), SIGCONT)
+            #os.kill(int(daily_pid), SIGCONT)
+            subprocess.call("sudo kill -SIGCONT " + daily_pid , shell=True)
+            #os.kill(int(master_pid), SIGCONT)
+            subprocess.call("sudo kill -SIGCONT " + master_pid , shell=True)
 
     def resume_coalescer(self, path):
         disk_id = path.split("/")[1][-1:]
@@ -573,9 +578,11 @@ class StorageServer:
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
         master_pid = self._get_value_pid_file(master_merge_pfile)
         if os.path.exists(daily_merge_pfile):
-            os.kill(int(daily_pid), SIGCONT)
+            #os.kill(int(daily_pid), SIGCONT)
+            subprocess.call("sudo kill -SIGCONT " + daily_pid , shell=True)
         if os.path.exists(master_merge_pfile):
-            os.kill(int(master_pid), SIGCONT)
+            #os.kill(int(master_pid), SIGCONT)
+            subprocess.call("sudo kill -SIGCONT " + master_pid , shell=True)
 
     def _get_value_pid_file(self, file):
         try:
@@ -612,3 +619,7 @@ class StorageServer:
         self.status = "404 Not Found"
         self._start_response()
         return "False"
+
+    def _kill_torrent(self, disk)
+        cmd = "kill -9 $(ps ax | grep aria2c | grep " + disk + " | awk '{print $1}')"
+        subprocess.call(cmd, shell=True)

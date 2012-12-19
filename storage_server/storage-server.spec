@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.8
+%define branch_version 0.9
 %define _unpackaged_files_terminate_build 0
 
 Summary:       Setup storage server
@@ -46,7 +46,7 @@ Setup NetOps storage server to backup up data.
 %{__rm} -rf %{buildroot}
 
 %files
-%defattr(-, apache, apache, 0755)
+%defattr(-, storageserver, storageserver, 0755)
 /opt/storage_server/*.sh
 /opt/storage_server/*.py
 /opt/storage_server/lib/*.py
@@ -90,31 +90,22 @@ for part in `df | grep "/data_" |  awk '{print $NF}' ` ; do  ln -s $part /var/ww
 
 # Create primary and secondary on each disk
 for disk in `df -h | grep data_ | awk '{print $NF}' ` ; do mkdir $disk/primary ; mkdir $disk/secondary ; done
-chown -R apache /data_*/
-chown -R apache /var/www/html/
+chown -R storageserver /data_*/
+chown -R storageserver /var/www/html/
 chmod -R a+x /var/www/html/
 
 # Create bad file.
 mkdir /var/tmp/disk_mapper
 touch /var/tmp/disk_mapper/bad_disk
-chown -R apache /var/tmp/disk_mapper
+chown -R storageserver /var/tmp/disk_mapper
 
 # Log file.
 touch /var/log/storage_server.log
-chown apache /var/log/storage_server.log
+chown storageserver /var/log/storage_server.log
 
 # Restart apache.
+sed -i -e "s/User apache/User storageserver/" -e "s/Group apache/Group storageserver/" /etc/httpd/conf/httpd.conf
 /etc/init.d/httpd restart
-
-# Added blobrestore user.
-useradd blobrestore
-mkdir -p /home/blobrestore/.ssh
-echo 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDNgpjkGUs+bGjYYsLHMrfdtJedQY58uyYMADDqPGG+0IWVKwlTxQ1RltAWWTpv7Dr0DCIM4OgLq5iyD0utUt4V5cFX+2niXojTqYQfE4B6hYch75BRr3EqkQLuFrUVd77gs6dp7cwQORsOudmxqn42QUrrtvMub8wvDs9kJEMz65MtuxEAy9bRNZy09HTR8qAle8HfEyl8JoRunhtSDQoPtZVFfs7/L0VIp1tb4Q1bNEhVS7RbYJawt59rn1RpBMddBcYy13QZv+KHTli2/FSga0EbodvJBFgIQfg3/4t0pzAGuw7psEuHRgpLQBtp197l9SXYGxJyb7Ayfw6feNsH' > /home/blobrestore/.ssh/authorized_keys
-chmod 755 /home/blobrestore
-chmod 700 /home/blobrestore/.ssh
-chmod 600 /home/blobrestore/.ssh/authorized_keys
-chown -R blobrestore /home/blobrestore/
-
 
 %preun
 
