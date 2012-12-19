@@ -86,6 +86,7 @@ chown -R apache /var/www/html
 %preun
 
 %postun
+kill -9 $(ps ax | grep diskmapper_daemon.py | grep -v grep | awk '{print $1}')
 
 %changelog
 
