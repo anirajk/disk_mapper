@@ -431,6 +431,7 @@ class StorageServer:
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
 
+        self.pause_coalescer(path)
         f = open(path,'wb')
         while chunks is not 0:
             file_chunk = self.environ['wsgi.input'].read(4096)
@@ -451,6 +452,7 @@ class StorageServer:
         dirty_file = os.path.join(host_symlink, "..", "..", "dirty")
         #self._append_to_file(dirty_file, os.path.dirname(actual_path))
         self._append_to_file(dirty_file, actual_path)
+        self.resume_coalescer(path)
 
         self._start_response()
         return ["Saved file to disk"]
