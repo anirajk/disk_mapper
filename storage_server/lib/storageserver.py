@@ -622,6 +622,6 @@ class StorageServer:
         self._start_response()
         return "False"
 
-    def _kill_torrent(self, disk)
+    def _kill_torrent(self, disk):
         cmd = "kill -9 $(ps ax | grep aria2c | grep " + disk + " | awk '{print $1}')"
         subprocess.call(cmd, shell=True)
