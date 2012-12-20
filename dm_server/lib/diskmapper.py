@@ -413,6 +413,7 @@ class DiskMapper:
 		else:
 			if value == False:
 				logger.error("Failed to get Zruntime data.\nShutting down Disk Mapper.")
+				os.remove("/var/run/disk_mapper.lock")
 				exit(1)
 
 		value = json.loads(value)
