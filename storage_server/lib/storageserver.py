@@ -284,22 +284,29 @@ class StorageServer:
 
 
         # aria2c --dir=/mydownloads --follow-torrent=mem --seed-time=0 --remove-control-file http://10.36.168.173/torrent/1347780080.torrent
+        replica_ip = torrent_url.split("/")[2]
+        if "primary" in file_path:
+            replica_file = file_path.replace("primary", "secondary")
+        else:
+            replica_file = file_path.replace("secondary", "primary")
+
         self.pause_coalescer(file_path)
-        cmd = 'aria2c -V --dir=' + os.path.dirname(file_path) + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --allow-overwrite=true --remove-control-file ' + torrent_url + ' --file-allocation=none --bt-stop-timeout=30'
+        cmd = 'aria2c -V --dir=' + os.path.dirname(file_path) + ' --out=' + os.path.basename(file_path) + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --allow-overwrite=true --remove-control-file ' + torrent_url + ' --file-allocation=none --bt-stop-timeout=30 ; [[ $? -eq 0 || $? -eq 7 || $? -eq 11 || $? -eq 13 ]] && curl -s \'http://' + replica_ip + '/api?action=remove_entry&type=dirty_files&entry=' + replica_file + '\''
         logger.debug("cmd to start download : " + cmd)
         self.status = '500 Internal Server Error'
         error_code = subprocess.call(cmd, shell=True)
         #if error_code == 768 or error_code == 1792:
         #   return True
 
+        cmd1 = "zstore_cmd del " + torrent_url.replace("http://", "s3://") 
         logger.debug("Return code of seed cmd : " + str(error_code))
-        if error_code != 0:
+        if error_code != 0 and error_code != 7:
             logger.error("Failed to start download : " + cmd + " error code : " + str(error_code))
-            self._start_response()
             self.resume_coalescer(file_path)
+            subprocess.call(cmd1, shell=True)
+            self._start_response()
             return "Failed to start download."
 
-        cmd1 = "zstore_cmd del " + torrent_url.replace("http://", "s3://") 
         logger.debug("cmd to del torrent file : " + cmd1)
         if subprocess.call(cmd1, shell=True):
             logger.error("Failed to delete torrent file : " + cmd1)
@@ -322,13 +329,13 @@ class StorageServer:
             return "Invalid arguments."
         torrent_folder = "/var/www/html/torrent"
 
-        #ps_cmd = 'ps ax | grep "aria2c -V" | grep "' + os.path.dirname(file_path + "/..") + '" | grep -v "follow-torrent"'
-        #logger.debug("ps cmd : " + ps_cmd)
-        #if subprocess.call(ps_cmd, shell=True) == 0:
-        #    logger.error(ps_cmd)
-        #    self.status = '200 OK'
-        #    self._start_response()
-        #    return "True"
+        ps_cmd = 'ps ax | grep "aria2c -V" | grep "' + os.path.dirname(file_path) + '" | grep -v "follow-torrent"'
+        logger.debug("ps cmd : " + ps_cmd)
+        if subprocess.call(ps_cmd, shell=True) != 1:
+            logger.error(ps_cmd)
+            self.status = '200 OK'
+            self._start_response()
+            return "True"
 
         if not os.path.exists(torrent_folder):
             os.makedirs(torrent_folder)
@@ -360,7 +367,7 @@ class StorageServer:
             self._start_response()
             return "Failed to pause coalescer."
 
-        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=0.0 --remove-control-file --stop=120 --on-download-stop="/opt/storage_server/hook.sh" -D' 
+        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=0 --remove-control-file --stop=90 --on-download-stop="/opt/storage_server/hook.sh" -D &'
         logger.debug("cmd to seed torrent : " + cmd1)
         cmd1_status = subprocess.call(cmd1, shell=True)
         logger.debug("Status of seed cmd : " + str(cmd1_status))
