@@ -347,7 +347,7 @@ class DiskMapper:
 				cp_to_disk = mapping[cp_to_type]["disk"]
 				cp_to_file = file.replace(cp_from_disk,cp_to_disk).replace(cp_from_type, cp_to_type)
 			except KeyError:
-				self._remove_entry(cp_from_server, file, "dirty_files")
+				#self._remove_entry(cp_from_server, file, "dirty_files")
 				return True
 
 			torrent_url = self._create_torrent(cp_from_server, file)
@@ -360,8 +360,8 @@ class DiskMapper:
 				return False
 
 			if self._start_download(cp_to_server, cp_to_file, torrent_url) == True:
-				logger.info("Replication completed : " + storage_server + ":" + file)
-				self._remove_entry(cp_from_server, file, "dirty_files")
+				logger.info("Started replication for : " + storage_server + ":" + file)
+				#self._remove_entry(cp_from_server, file, "dirty_files")
 			else:
 				logger.error("Failed to start download to " + cp_to_server + ":" + cp_to_file)
 
@@ -639,7 +639,7 @@ class DiskMapper:
 			return {"disk" : spare_disk, "storage_server" : server_with_most_spare }
 		return spare_mapping
 
-	def _get_mapping(self, type, key = None, ignore_bad=True):
+	def _get_mapping(self, type, key=None, ignore_bad=True):
 
 		logger.debug("Get mapping for, type : " + type + " key : " + str(key) + " ignore_bad : " + str(ignore_bad))
 
@@ -670,7 +670,6 @@ class DiskMapper:
 
 		elif type == "storage_server":
 			mapping = file_content
-
 
 		f.close()
 		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
