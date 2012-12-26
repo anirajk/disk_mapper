@@ -124,19 +124,21 @@ class StorageServer:
         if not os.path.exists(file):
             return True
     
+        lock = open("%s.lock" %file, 'w')
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+
         f = open(file, 'r+')
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         file_content = f.readlines()
-        entry_string = entry + "\\n"
-        
         f.seek(0, 0)
         f.truncate()
         for line in file_content:
             if entry not in line:
                 f.write(line)
         os.fsync(f)
-        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         f.close()
+        fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+        lock.close()
+
 
     def get_file(self):
         self.status = '202 Accepted'
