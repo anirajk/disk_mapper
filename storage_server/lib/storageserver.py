@@ -487,6 +487,12 @@ class StorageServer:
             return ["No permission to delete file."]
 
         if self._delete_file_folder(path):
+            d = os.path.dirname(path)
+            f = os.path.basename(path)
+
+            if f.endswith(".torrent") and d.endswith("/torrent"):
+                os.system("ps -eo pid,args | grep %s | grep  aria2 | cut -d' ' -f2 | xargs kill -9" %f)
+
             self.status = '200 OK'
         else:
             self.status = '400 Bad Request'

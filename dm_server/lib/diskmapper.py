@@ -322,6 +322,7 @@ class DiskMapper:
 
 		files = dirty_file.split("\n")
 		sorted_files = self._uniq(files)
+        #FIXME: This is dead code
 		[ x.strip() for x in sorted_files ]
 		for file in sorted_files:
 			time.sleep(3)
