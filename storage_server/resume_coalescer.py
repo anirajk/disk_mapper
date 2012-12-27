@@ -4,4 +4,5 @@ import sys
 from lib.storageserver import StorageServer
 
 ss = StorageServer(None, None)
-ss.resume_coalescer(sys.argv[1])
+if len(sys.argv) == 2:
+    ss.resume_coalescer(sys.argv[1])
