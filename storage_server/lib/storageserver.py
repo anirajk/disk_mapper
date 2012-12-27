@@ -493,7 +493,7 @@ class StorageServer:
             f = os.path.basename(path)
 
             if f.endswith(".torrent") and d.endswith("/torrent"):
-                os.system("ps -eo pid,args | grep %s | grep  aria2 | cut -d' ' -f2 | xargs kill -9" %f)
+                os.system("ps -eo pid,args | grep %s | grep  aria2 | cut -d' ' -f2 | xargs kill" %f)
 
             self.status = '200 OK'
         else:
