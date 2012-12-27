@@ -578,10 +578,10 @@ class StorageServer:
         try:
             if daily_pid is not False:
                 #os.kill(int(daily_pid), SIGSTOP)
-                subprocess.call("sudo kill -SIGSTOP -" + daily_pid , shell=True)
+                os.system("sudo kill -SIGSTOP -" + daily_pid)
             if master_pid is not False:
                 #os.kill(int(master_pid), SIGSTOP)
-                subprocess.call("sudo kill -SIGSTOP -" + master_pid , shell=True)
+                os.system("sudo kill -SIGSTOP -" + master_pid)
         except:
             #os.kill(int(daily_pid), SIGCONT)
             subprocess.call("sudo kill -SIGCONT -" + daily_pid , shell=True)
@@ -596,10 +596,10 @@ class StorageServer:
         master_pid = self._get_value_pid_file(master_merge_pfile)
         if os.path.exists(daily_merge_pfile):
             #os.kill(int(daily_pid), SIGCONT)
-            subprocess.call("sudo kill -SIGCONT -" + daily_pid , shell=True)
+            os.system("sudo kill -SIGCONT -" + daily_pid)
         if os.path.exists(master_merge_pfile):
             #os.kill(int(master_pid), SIGCONT)
-            subprocess.call("sudo kill -SIGCONT -" + master_pid , shell=True)
+            os.system("sudo kill -SIGCONT -" + master_pid)
 
     def _get_value_pid_file(self, file):
         try:
