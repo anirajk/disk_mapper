@@ -411,6 +411,8 @@ class DiskMapper:
 			value = self._curl(url, 200, True)
 			if value != False:
 				break
+			logger.error("Retrying zruntime connection...")
+
 		else:
 			if value == False:
 				logger.error("Failed to get Zruntime data.\nShutting down Disk Mapper.")
