@@ -145,6 +145,8 @@ class DiskMapper:
 		host_name =  path.split("/")[5]
 		game_id =  path.split("/")[4]
 
+		lockfd = open(self.host_init_lock, 'w')
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
 		if not self._is_host_initialized(host_name):
 			logger.info("Host : " + host_name + " is not initialized.")
 
@@ -171,13 +173,12 @@ class DiskMapper:
 					else:
 						break
 
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
+		lockfd.close()
 		return self.forward_request()
 
 	def initialize_host(self, host_name, type, game_id, update_mapping=True):
 		
-		lockfd = open(self.host_init_lock, 'w')
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
-
 		logger.debug("Initialize host : " + host_name + " " + type + " " + game_id + " " + str(update_mapping))
 		mapping = self._get_mapping("host", host_name)
 
@@ -197,8 +198,6 @@ class DiskMapper:
 		logger.debug("spare : " + str(spare))
 		if spare == False:
 			logger.error(type + " spare not found for " + host_name)
-			fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-			lockfd.close()
 			return False
 
 		spare_server  = spare["storage_server"]
@@ -206,19 +205,13 @@ class DiskMapper:
 		spare_config = self._get_server_config(spare_server)
 		if spare_config[spare_disk][type] != "spare":
 			logger.debug("Spare disk is no more a spare.")
-			fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-			lockfd.close()
 			return False
 
 		if self._initialize_host(spare_server, host_name, type, game_id, spare_disk, update_mapping) != False:
-			fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-			lockfd.close()
 			if update_mapping == False:
 				return spare
 			return True
 
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-		lockfd.close()
 		return False
 
 	def swap_bad_disk(self, storage_servers=None):
