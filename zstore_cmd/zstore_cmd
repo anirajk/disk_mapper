@@ -176,7 +176,7 @@ upload () {
     [[ ${actual_url: -1} = "/" ]] && actual_url="$actual_url$file_name"
 
     # Execute curl
-    curl $CURL_PARAM -L --connect-timeout 15 --max-time 120 --request "POST" --data-binary "@$file_path" "$actual_url"
+    curl $CURL_PARAM -L --connect-timeout 15 --max-time 600 --request "POST" --data-binary "@$file_path" "$actual_url"
     [[ $? -ne 0 ]] && exit 1
 
     # Check if md5hash of local and remote file match.
