@@ -318,6 +318,81 @@ class DiskMapper:
 		while threading.activeCount() > 1:
 			pass
 
+	def delete_merged_files(self):
+		storage_servers = config['storage_server']
+
+		jobs = []
+		for storage_server in storage_servers:
+			jobs.append(threading.Thread(target=self.update_replica_file, args=(storage_server, "to_be_deleted")))
+
+		for j in jobs:
+			j.start()
+
+		while threading.activeCount() > 1:
+			pass
+
+	def check_copy_complete(self):
+		storage_servers = config['storage_server']
+
+		jobs = []
+		for storage_server in storage_servers:
+			jobs.append(threading.Thread(target=self.update_replica_file, args=(storage_server, "copy_complete")))
+
+		for j in jobs:
+			j.start()
+
+		while threading.activeCount() > 1:
+			pass
+
+	def update_replica_file(self, storage_server, type):
+		if type == "to_be_deleted":
+			replica_files = self._get_to_be_deleted(storage_server)
+		else:
+			replica_files = self._get_copy_completed(storage_server)
+		if replica_files == False:
+			logger.error("Failed to get " + type + "file from storage server: " + storage_server)
+			return False
+
+		files = replica_files.split("\n")
+		sorted_files = self._uniq(files)
+		[ x.strip() for x in sorted_files ]
+		for file in sorted_files:
+			if file == "":
+				continue
+			source_detail = file.split("/")
+			source_server = storage_server
+			try:
+				source_disk = source_detail[1]
+				source_type = source_detail[2]
+				host_name = source_detail[3]
+			except IndexError:
+				return True
+
+			mapping = self._get_mapping("host", host_name)
+			if source_type == "primary":
+				dest_type = "secondary"
+			elif source_type == "secondary":
+				dest_type = "primary"
+
+			try:
+				dest_server = mapping[dest_type]["storage_server"]
+				dest_disk = mapping[dest_type]["disk"]
+				dest_file = file.replace(source_disk,dest_disk).replace(source_type, dest_type)
+			except KeyError:
+				logger.error("Failed to find corresponding replica for " + file)
+				continue
+
+			if type == "copy_complete":
+				logger.info("Successfully copied " + dest_server + ":" + dest_file + " to " + source_server + ":" + file)
+				self._remove_entry(dest_server, dest_file, "dirty_files")
+				self._remove_entry(source_server, file, "copy_completed")
+			else:
+				if self._delete_file(dest_server, dest_file):
+					logger.info ("Successfully deleted " + dest_server + ":" + dest_file)
+					self._remove_entry(source_server, file, "to_be_deleted")
+				else:
+					logger.error ("Failed to deleted " + dest_server + ":" + dest_file)
+				
 	def poll_dirty_file(self, storage_server):
 		dirty_file = self._get_dirty_file(storage_server)
 		if dirty_file == False:
@@ -326,10 +401,8 @@ class DiskMapper:
 
 		files = dirty_file.split("\n")
 		sorted_files = self._uniq(files)
-		#FIXME: This is dead code
 		[ x.strip() for x in sorted_files ]
 		for file in sorted_files:
-			time.sleep(3)
 			if file == "":
 				continue
 			cp_from_detail = file.split("/")
@@ -472,6 +545,14 @@ class DiskMapper:
 			return True
 		return False
 
+	def _delete_file(self, storage_server, file_name):
+		# http://netops-demo-mb-220.va2/api/membase_backup?action=delete_file&file_name=/data_1/primary/game-mb-6/zc1/daily/small_file:1
+		url = 'http://' + storage_server + '/api?action=delete_file&file_name=' + file_name.rstrip() 
+		value = self._curl(url, 200)
+		if value != False:
+			return True
+		return False
+
 	def _remove_entry(self, storage_server, entry, file_type):
 		# http://netops-demo-mb-220.va2/api/membase_backup?action=remove_entry&type=bad_disk&entry=%22/data_1%22
 		url = 'http://' + storage_server + '/api?action=remove_entry&entry=' + entry.rstrip() + '&type=' + file_type
@@ -514,6 +595,20 @@ class DiskMapper:
 				self._update_mapping(storage_server, disk, type, host_name)
 			return True
 		logger.error("Failed to initialize " + host_name + " at " + storage_server + ":/" + disk + "/" + type)
+		return False
+
+	def _get_copy_completed(self, storage_server):
+		url = 'http://' + storage_server + '/api?action=get_file&type=copy_completed'
+		value = self._curl(url, 200)
+		if value != False:
+			return json.loads(value)
+		return False
+
+	def _get_to_be_deleted(self, storage_server):
+		url = 'http://' + storage_server + '/api?action=get_file&type=to_be_deleted'
+		value = self._curl(url, 200)
+		if value != False:
+			return json.loads(value)
 		return False
 
 	def _get_dirty_file(self, storage_server):

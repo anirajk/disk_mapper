@@ -27,6 +27,9 @@ try:
     while True:
         if dm.is_dm_active() == True:
             logger.info("====Active Disk Mapper===")
+            logger.info("Polling for copy completed.")
+            is_daemon_stopped()
+            dm.check_copy_complete()
             logger.info("Polling to enable replication.")
             is_daemon_stopped()
             dm.enable_replication()

@@ -92,10 +92,12 @@ class StorageServer:
         logger.debug("query : " + self.query_string)
         if "type=bad_disk" in self.query_string:
             file = "/var/tmp/disk_mapper/bad_disk"
+        elif "type=copy_completed" in self.query_string:
+            file = "/var/tmp/disk_mapper/copy_completed"
         elif "type=dirty_files" in self.query_string:
             file_name = "dirty"
-        elif "type=copy_completed" in self.query_string:
-            file_name = "copy_completed"
+        elif "type=to_be_deleted" in self.query_string:
+            file_name = "to_be_deleted"
         else:
             self.status = '400 Bad Request'
             self._start_response()
@@ -109,7 +111,7 @@ class StorageServer:
             self._start_response()
             return "Invalid arguments."
 
-        if "type=dirty_files"  in self.query_string or "type=copy_completed" in self.query_string:
+        if "type=dirty_files"  in self.query_string or "type=to_be_deleted" in self.query_string:
             for partition_name in sorted(glob.glob('/var/www/html/membase_backup/data_*')):
                 file = partition_name + "/" + file_name
                 self._remove_line_from_file(file, entry)
@@ -145,17 +147,17 @@ class StorageServer:
 
         if "type=bad_disk" in self.query_string:
             file = "/var/tmp/disk_mapper/bad_disk"
+        elif "type=copy_completed" in self.query_string:
+            file = "/var/tmp/disk_mapper/copy_completed"
         elif "type=dirty_files" in self.query_string:
             file_name = "dirty"
-        elif "type=copy_completed" in self.query_string:
-            file_name = "copy_completed"
         else:
             self.status = '400 Bad Request'
             self._start_response()
             return "Invalid file type"
 
         file_content = ""
-        if "type=dirty_files"  in self.query_string or "type=copy_completed" in self.query_string:
+        if "type=dirty_files" in self.query_string:
             for partition_name in sorted(glob.glob('/var/www/html/membase_backup/data_*')):
                 file = partition_name + "/" + file_name
 
@@ -286,14 +288,9 @@ class StorageServer:
 
 
         # aria2c --dir=/mydownloads --follow-torrent=mem --seed-time=0 --remove-control-file http://10.36.168.173/torrent/1347780080.torrent
-        replica_ip = torrent_url.split("/")[2]
-        if "primary" in file_path:
-            replica_file = file_path.replace("primary", "secondary")
-        else:
-            replica_file = file_path.replace("secondary", "primary")
 
         self.pause_coalescer(file_path)
-        cmd = 'aria2c -V --dir=' + os.path.dirname(file_path) + ' --out=' + os.path.basename(file_path) + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --allow-overwrite=true --remove-control-file ' + torrent_url + ' --file-allocation=none --bt-stop-timeout=30 ; [[ $? -eq 0 || $? -eq 7 || $? -eq 11 || $? -eq 13 ]] && curl -s \'http://' + replica_ip + '/api?action=remove_entry&type=dirty_files&entry=' + replica_file + '\''
+        cmd = 'aria2c -V --dir=' + os.path.dirname(file_path) + ' --out=' + os.path.basename(file_path) + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --on-bt-download-complete="/opt/storage_server/hook_complete.sh" --allow-overwrite=true --remove-control-file ' + torrent_url + ' --file-allocation=none --bt-stop-timeout=30'
         logger.debug("cmd to start download : " + cmd)
         self.status = '500 Internal Server Error'
         error_code = subprocess.call(cmd, shell=True)
@@ -302,7 +299,7 @@ class StorageServer:
 
         cmd1 = "zstore_cmd del " + torrent_url.replace("http://", "s3://") 
         logger.debug("Return code of seed cmd : " + str(error_code))
-        if error_code != 0 and error_code != 7:
+        if error_code != 0 and error_code != 7 and error_code != -15:
             logger.error("Failed to start download : " + cmd + " error code : " + str(error_code))
             self.resume_coalescer(file_path)
             subprocess.call(cmd1, shell=True)
@@ -473,6 +470,41 @@ class StorageServer:
         os.fsync(f)
         fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         f.close()    
+
+    def delete_merged_file(self):
+        self.status = '202 Accepted'
+        qs = parse_qs(self.query_string)
+        try:
+            file_name =  qs["file_name"][0]
+        except KeyError:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid arguments."
+
+        if not os.path.exists(path):
+            self.status = '200 OK'
+            self._start_response()
+            return ["File not found."]
+
+        if len(file_name.split("/")) < 7:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid arguments."
+            
+        if not os.access(path, os.W_OK):
+            self.status = '403 Forbidden'
+            self._start_response()
+            return ["No permission to delete file."]
+
+        if self._delete_file_folder(path):
+            self.status = '200 OK'
+        else:
+            self.status = '400 Bad Request'
+            
+        self._start_response()
+        return ["Deleted " + file_name]
+
+
 
     def delete(self):
         self.status = '202 Accepted'

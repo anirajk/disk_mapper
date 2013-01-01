@@ -1,6 +1,7 @@
 FILES=__init__.py\
  request_handler.py\
  hook.sh\
+ hook_complete.sh\
  resume_coalescer.py\
  lib/storageserver.py\
  lib/urlmapper.py\

@@ -29,6 +29,9 @@ def index(environ, start_response):
         if "add_entry" in action:
             return ss.add_entry()
 
+        if "delete_file" in action:
+            return ss.delete_merged_file()
+
         if "remove_entry" in action:
             return ss.remove_entry()
 
