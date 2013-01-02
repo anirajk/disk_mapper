@@ -462,7 +462,8 @@ class StorageServer:
         actual_path = path.replace(host_symlink, actual_path_prefix)
         dirty_file = os.path.join(host_symlink, "..", "..", "dirty")
         #self._append_to_file(dirty_file, os.path.dirname(actual_path))
-        self._append_to_file(dirty_file, actual_path)
+        if not os.path.basename(file_path).startswith("lock-"):
+            self._append_to_file(dirty_file, actual_path)
         self.resume_coalescer(path)
 
         self._start_response()

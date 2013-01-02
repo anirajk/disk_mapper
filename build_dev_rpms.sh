@@ -1,9 +1,9 @@
 #!/bin/bash
 
-#dm_server="netops-demo-mb-210.va2.zynga.com"
-#ss_server="netops-demo-mb-211.va2.zynga.com,netops-demo-mb-212.va2.zynga.com,netops-demo-mb-213.va2.zynga.com"
-dm_server="10.36.172.154"
-ss_server="10.36.161.172,10.36.160.34,10.36.162.35"
+dm_server="netops-demo-mb-210.va2.zynga.com"
+ss_server="netops-demo-mb-211.va2.zynga.com,netops-demo-mb-212.va2.zynga.com,netops-demo-mb-213.va2.zynga.com"
+#dm_server="10.36.172.154"
+#ss_server="10.36.161.172,10.36.160.34,10.36.162.35"
 
 cd /home/sqadir/disk_mapper/dm_server
 dm_rpm=$(sudo make rpm | grep Wrote: | grep x86_64 | awk '{print $NF}') 
