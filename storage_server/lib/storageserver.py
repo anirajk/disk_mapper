@@ -79,7 +79,7 @@ class StorageServer:
                 file = partition_name + "/" + file_name
                 self._append_to_file(file, entry)
         else:
-            self._kill_torrent(entry)
+            self._kill_torrent(entry.split("/")[1])
             self._append_to_file(file, entry)
 
         self.status = '200 OK'
