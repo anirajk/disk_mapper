@@ -630,7 +630,13 @@ class StorageServer:
             subprocess.call("sudo kill -SIGCONT -" + master_pid , shell=True)
 
     def resume_coalescer(self, path):
-        disk_id = path.split("/")[1][-1:]
+        disk = path.split("/")[1]
+
+        for line in open(os.path.join("/", disk, "dirty")):
+            if disk in line:
+                return True
+
+        disk_id = disk[-1:]
         daily_merge_pfile = "/var/run/daily-merge-disk-" + disk_id + ".pid"
         master_merge_pfile = "/var/run/master-merge-disk-" + disk_id + ".pid"
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
