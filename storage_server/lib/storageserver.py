@@ -462,9 +462,9 @@ class StorageServer:
         actual_path = path.replace(host_symlink, actual_path_prefix)
         dirty_file = os.path.join(host_symlink, "..", "..", "dirty")
         #self._append_to_file(dirty_file, os.path.dirname(actual_path))
-        if not os.path.basename(file_path).startswith("lock-"):
+        if not os.path.basename(path).startswith("lock-"):
             self._append_to_file(dirty_file, actual_path)
-        self.resume_coalescer(path)
+            self.resume_coalescer(path)
 
         self._start_response()
         return ["Saved file to disk"]
@@ -515,6 +515,9 @@ class StorageServer:
     def delete(self):
         self.status = '202 Accepted'
         path = self.environ["PATH_TRANSLATED"]
+
+        if os.path.basename(path).startswith("lock-"):
+            self.resume_coalescer(path)
 
         if not os.path.exists(path):
             self.status = '404 Not Found'
