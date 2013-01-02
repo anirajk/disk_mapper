@@ -296,8 +296,10 @@ class StorageServer:
         logger.debug("cmd to start download : " + cmd)
         self.status = '500 Internal Server Error'
         error_code = subprocess.call(cmd, shell=True)
-        #if error_code == 768 or error_code == 1792:
-        #   return True
+        if error_code == 3:
+            self.status = '200 OK'
+            self._start_response()
+            return "True"
 
         cmd1 = "zstore_cmd del " + torrent_url.replace("http://", "s3://") 
         logger.debug("Return code of seed cmd : " + str(error_code))
@@ -311,6 +313,7 @@ class StorageServer:
         logger.debug("cmd to del torrent file : " + cmd1)
         if subprocess.call(cmd1, shell=True):
             logger.error("Failed to delete torrent file : " + cmd1)
+            self.status = '200 OK'
             self._start_response()
             return "Failed to remove torrent file."
 
@@ -341,7 +344,7 @@ class StorageServer:
         if not os.path.exists(torrent_folder):
             os.makedirs(torrent_folder)
 
-        torrent_file_name = time.strftime('%s') + ".torrent"
+        torrent_file_name = os.path.basename(file_path) + "-" + time.strftime('%s') + ".torrent"
         torrent_path = os.path.join(torrent_folder, torrent_file_name)
         # btmakemetafile.py http://10.34.231.215:6969/announce /home/sqadir/backup/ --target "/tmp/back_up.torrent"
         cmd = 'btmakemetafile.py http://' + self.environ["SERVER_ADDR"] + ':6969/announce ' + file_path + ' --target ' + torrent_path

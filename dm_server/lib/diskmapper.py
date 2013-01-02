@@ -305,18 +305,6 @@ class DiskMapper:
 							logger.error("Failed to start download to " + cp_to_server + ":" + cp_to_file)
 
 
-	def enable_replication(self):
-		storage_servers = config['storage_server']
-
-		jobs = []
-		for storage_server in storage_servers:
-			jobs.append(threading.Thread(target=self.poll_dirty_file, args=(storage_server,)))
-
-		for j in jobs:
-			j.start()
-
-		while threading.activeCount() > 1:
-			pass
 
 	def delete_merged_files(self):
 		storage_servers = config['storage_server']
@@ -393,54 +381,67 @@ class DiskMapper:
 				else:
 					logger.error ("Failed to deleted " + dest_server + ":" + dest_file)
 				
-	def poll_dirty_file(self, storage_server):
-		dirty_file = self._get_dirty_file(storage_server)
-		if dirty_file == False:
-			logger.error("Failed to get dirty file from storage server: " + storage_server)
-			return False
+	def enable_replication(self):
+		storage_servers = config['storage_server']
 
-		files = dirty_file.split("\n")
-		sorted_files = self._uniq(files)
-		[ x.strip() for x in sorted_files ]
-		for file in sorted_files:
-			if file == "":
-				continue
-			cp_from_detail = file.split("/")
-			cp_from_server = storage_server
-			try:
-				cp_from_disk = cp_from_detail[1]
-				cp_from_type = cp_from_detail[2]
-				host_name = cp_from_detail[3]
-			except IndexError:
-				return True
-
-			mapping = self._get_mapping("host", host_name)
-			if cp_from_type == "primary":
-				cp_to_type = "secondary"
-			elif cp_from_type == "secondary":
-				cp_to_type = "primary"
-
-			try:
-				cp_to_server = mapping[cp_to_type]["storage_server"]
-				cp_to_disk = mapping[cp_to_type]["disk"]
-				cp_to_file = file.replace(cp_from_disk,cp_to_disk).replace(cp_from_type, cp_to_type)
-			except KeyError:
-				logger.error("Failed to find corresponding replica for " + file)
-				continue
-
-			torrent_url = self._create_torrent(cp_from_server, file)
-			if torrent_url == "True":
-				logger.info("Torrent is running, for " + storage_server + ":" + file + " Skipping...")
-				continue
-
-			if torrent_url == False:
-				logger.error("Failed to get torrent url for " + storage_server + ":" + file)
+		jobs = []
+		for storage_server in storage_servers:
+			dirty_file = self._get_dirty_file(storage_server)
+			if dirty_file == False:
+				logger.error("Failed to get dirty file from storage server: " + storage_server)
 				return False
 
-			if self._start_download(cp_to_server, cp_to_file, torrent_url) == True:
-				logger.info("Started replication for : " + storage_server + ":" + file)
-			else:
-				logger.error("Failed to start download to " + cp_to_server + ":" + cp_to_file)
+			files = dirty_file.split("\n")
+			sorted_files = self._uniq(files)
+			[ x.strip() for x in sorted_files ]
+			for file in sorted_files:
+				jobs.append(threading.Thread(target=self.poll_dirty_file, args=(storage_server, file)))
+
+		for j in jobs:
+			j.start()
+
+		while threading.activeCount() > 1:
+			pass
+
+	def poll_dirty_file(self, storage_server,file):
+		if file == "":
+			return True
+		cp_from_detail = file.split("/")
+		cp_from_server = storage_server
+		try:
+			cp_from_disk = cp_from_detail[1]
+			cp_from_type = cp_from_detail[2]
+			host_name = cp_from_detail[3]
+		except IndexError:
+			return True
+
+		mapping = self._get_mapping("host", host_name)
+		if cp_from_type == "primary":
+			cp_to_type = "secondary"
+		elif cp_from_type == "secondary":
+			cp_to_type = "primary"
+
+		try:
+			cp_to_server = mapping[cp_to_type]["storage_server"]
+			cp_to_disk = mapping[cp_to_type]["disk"]
+			cp_to_file = file.replace(cp_from_disk,cp_to_disk).replace(cp_from_type, cp_to_type)
+		except KeyError:
+			logger.error("Failed to find corresponding replica for " + file)
+			return True
+
+		torrent_url = self._create_torrent(cp_from_server, file)
+		if torrent_url == "True":
+			logger.info("Torrent is running, for " + storage_server + ":" + file + " Skipping...")
+			return True
+
+		if torrent_url == False:
+			logger.error("Failed to get torrent url for " + storage_server + ":" + file)
+			return False
+
+		if self._start_download(cp_to_server, cp_to_file, torrent_url) == True:
+			logger.info("Started replication for : " + storage_server + ":" + file)
+		else:
+			logger.error("Failed to start download to " + cp_to_server + ":" + cp_to_file)
 
 
 	def initialize_diskmapper(self, poll=False):
