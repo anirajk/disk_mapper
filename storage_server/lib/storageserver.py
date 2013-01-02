@@ -149,6 +149,8 @@ class StorageServer:
             file = "/var/tmp/disk_mapper/bad_disk"
         elif "type=copy_completed" in self.query_string:
             file = "/var/tmp/disk_mapper/copy_completed"
+        elif "type=to_be_deleted" in self.query_string:
+            file_name = "to_be_deleted"
         elif "type=dirty_files" in self.query_string:
             file_name = "dirty"
         else:
@@ -157,7 +159,7 @@ class StorageServer:
             return "Invalid file type"
 
         file_content = ""
-        if "type=dirty_files" in self.query_string:
+        if "type=dirty_files" in self.query_string or "type=to_be_deleted" in self.query_string:
             for partition_name in sorted(glob.glob('/var/www/html/membase_backup/data_*')):
                 file = partition_name + "/" + file_name
 
@@ -481,7 +483,7 @@ class StorageServer:
             self._start_response()
             return "Invalid arguments."
 
-        if not os.path.exists(path):
+        if not os.path.exists(file_name):
             self.status = '200 OK'
             self._start_response()
             return ["File not found."]
@@ -491,12 +493,12 @@ class StorageServer:
             self._start_response()
             return "Invalid arguments."
             
-        if not os.access(path, os.W_OK):
+        if not os.access(file_name, os.W_OK):
             self.status = '403 Forbidden'
             self._start_response()
             return ["No permission to delete file."]
 
-        if self._delete_file_folder(path):
+        if self._delete_file_folder(file_name):
             self.status = '200 OK'
         else:
             self.status = '400 Bad Request'
