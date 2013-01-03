@@ -79,7 +79,7 @@ class StorageServer:
                 file = partition_name + "/" + file_name
                 self._append_to_file(file, entry)
         else:
-            self._kill_torrent(entry.split("/")[1])
+            self._kill_torrent(entry)
             self._append_to_file(file, entry)
 
         self.status = '200 OK'
@@ -90,19 +90,6 @@ class StorageServer:
         self.status = '202 Accepted'
 
         logger.debug("query : " + self.query_string)
-        if "type=bad_disk" in self.query_string:
-            file = "/var/tmp/disk_mapper/bad_disk"
-        elif "type=copy_completed" in self.query_string:
-            file = "/var/tmp/disk_mapper/copy_completed"
-        elif "type=dirty_files" in self.query_string:
-            file_name = "dirty"
-        elif "type=to_be_deleted" in self.query_string:
-            file_name = "to_be_deleted"
-        else:
-            self.status = '400 Bad Request'
-            self._start_response()
-            return "Invalid file type"
-
         qs = parse_qs(self.query_string)
         try:
             entry =  qs["entry"][0]
@@ -111,6 +98,21 @@ class StorageServer:
             self._start_response()
             return "Invalid arguments."
 
+        if "type=bad_disk" in self.query_string:
+            file = "/var/tmp/disk_mapper/bad_disk"
+        elif "type=copy_completed" in self.query_string:
+            file = "/var/tmp/disk_mapper/copy_completed"
+        elif "type=dirty_files" in self.query_string:
+            file_name = "dirty"
+            self.resume_coalescer(entry)
+        elif "type=to_be_deleted" in self.query_string:
+            file_name = "to_be_deleted"
+        else:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid file type"
+
+        
         if "type=dirty_files"  in self.query_string or "type=to_be_deleted" in self.query_string:
             for partition_name in sorted(glob.glob('/var/www/html/membase_backup/data_*')):
                 file = partition_name + "/" + file_name
@@ -371,7 +373,7 @@ class StorageServer:
             self._start_response()
             return "Failed to pause coalescer."
 
-        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=0 --remove-control-file --stop=90 --on-download-stop="/opt/storage_server/hook.sh" -D &'
+        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=0 --remove-control-file --stop=90 --on-download-stop="/opt/storage_server/hook.sh" --on-download-error="/opt/storage_server/hook_error.sh" -D &'
         logger.debug("cmd to seed torrent : " + cmd1)
         cmd1_status = subprocess.call(cmd1, shell=True)
         logger.debug("Status of seed cmd : " + str(cmd1_status))
@@ -464,7 +466,7 @@ class StorageServer:
         #self._append_to_file(dirty_file, os.path.dirname(actual_path))
         if not os.path.basename(path).startswith("lock-"):
             self._append_to_file(dirty_file, actual_path)
-            self.resume_coalescer(path)
+            self.resume_coalescer(actual_path)
 
         self._start_response()
         return ["Saved file to disk"]
@@ -534,7 +536,7 @@ class StorageServer:
             f = os.path.basename(path)
 
             if f.endswith(".torrent") and d.endswith("/torrent"):
-                os.system("ps -eo pid,args | grep %s | grep  aria2 | cut -d' ' -f2 | xargs kill" %f)
+                os.system("ps -eo pid,args | grep %s | grep  aria2 | cut -d' ' -f2 | xargs kill -9" %f)
 
             self.status = '200 OK'
         else:
@@ -631,10 +633,13 @@ class StorageServer:
 
     def resume_coalescer(self, path):
         disk = path.split("/")[1]
+        dirty_file = os.path.join("/", disk, "dirty")
 
-        for line in open(os.path.join("/", disk, "dirty")):
-            if disk in line:
-                return True
+
+        if os.path.exists(dirty_file):
+            for line in open(os.path.join("/", disk, "dirty")):
+                if disk in line:
+                    return True
 
         disk_id = disk[-1:]
         daily_merge_pfile = "/var/run/daily-merge-disk-" + disk_id + ".pid"
@@ -685,5 +690,5 @@ class StorageServer:
         return "False"
 
     def _kill_torrent(self, disk):
-        cmd = "kill -9 $(ps ax | grep aria2c | grep " + disk + " | awk '{print $1}')"
+        cmd = "kill -2 $(ps ax | grep aria2c | grep " + disk + " | awk '{print $1}')"
         subprocess.call(cmd, shell=True)

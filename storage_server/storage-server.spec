@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.11
+%define branch_version 0.12
 %define _unpackaged_files_terminate_build 0
 
 Summary:       Setup storage server
@@ -28,7 +28,7 @@ Setup NetOps storage server to backup up data.
     %{buildroot}/opt/storage_server/lib/ \
     %{buildroot}/usr/bin/
 
-%{__cp} __init__.py request_handler.py resume_coalescer.py hook.sh hook_complete.sh %{buildroot}/opt/storage_server/
+%{__cp} __init__.py request_handler.py resume_coalescer.py hook.sh hook_complete.sh hook_error.sh %{buildroot}/opt/storage_server/
 %{__cp} __init__.py lib/storageserver.py lib/urlmapper.py %{buildroot}/opt/storage_server/lib/
 %{__cp} packages/urlrelay-0.7.1.tar.bz2 %{buildroot}/tmp/
 %{__cp} packages/BitTornado-0.3.17.tar.gz %{buildroot}/tmp/

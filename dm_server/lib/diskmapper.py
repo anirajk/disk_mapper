@@ -391,10 +391,16 @@ class DiskMapper:
 				logger.error("Failed to get dirty file from storage server: " + storage_server)
 				return False
 
+			bad_disks = self._get_bad_disks(storage_server)
+			if bad_disks == False:
+                                logger.error("Failed to get dirty file from storage server: " + storage_server)
+
 			files = dirty_file.split("\n")
 			sorted_files = self._uniq(files)
 			[ x.strip() for x in sorted_files ]
 			for file in sorted_files:
+				if file != "" and file.split("/")[1] in bad_disks:
+					continue
 				jobs.append(threading.Thread(target=self.poll_dirty_file, args=(storage_server, file)))
 
 		for j in jobs:

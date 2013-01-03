@@ -33,13 +33,13 @@ try:
             logger.info("Polling to delete merged files.")
             is_daemon_stopped()
             dm.delete_merged_files()
-            logger.info("Polling to enable replication.")
-            is_daemon_stopped()
-            dm.enable_replication()
             logger.info("Polling for bad disks.")
             is_daemon_stopped()
             dm.swap_bad_disk()
-
+            logger.info("Polling to enable replication.")
+            is_daemon_stopped()
+            dm.enable_replication()
+            
         logger.info("Polling storage server for config.")
         is_daemon_stopped()
         dm.initialize_diskmapper(True)
