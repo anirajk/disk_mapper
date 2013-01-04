@@ -294,7 +294,7 @@ class StorageServer:
         # aria2c --dir=/mydownloads --follow-torrent=mem --seed-time=0 --remove-control-file http://10.36.168.173/torrent/1347780080.torrent
 
         self.pause_coalescer(file_path)
-        cmd = 'aria2c -V --dir=' + os.path.dirname(file_path) + ' --out=' + os.path.basename(file_path) + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --on-bt-download-complete="/opt/storage_server/hook_complete.sh" --allow-overwrite=true --remove-control-file ' + torrent_url + ' --file-allocation=none --bt-stop-timeout=30'
+        cmd = 'aria2c -V --dir=' + os.path.dirname(file_path) + ' --out=' + os.path.basename(file_path) + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --on-bt-download-complete="/opt/storage_server/hook_complete.sh" --remove-control-file ' + torrent_url + ' --file-allocation=none --bt-stop-timeout=30'
         logger.debug("cmd to start download : " + cmd)
         self.status = '500 Internal Server Error'
         error_code = subprocess.call(cmd, shell=True)
@@ -373,7 +373,7 @@ class StorageServer:
             self._start_response()
             return "Failed to pause coalescer."
 
-        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=0 --remove-control-file --stop=90 --on-download-stop="/opt/storage_server/hook.sh" --on-download-error="/opt/storage_server/hook_error.sh" -D &'
+        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=1.5 --remove-control-file --stop=300 --on-download-stop="/opt/storage_server/hook.sh" --on-download-error="/opt/storage_server/hook_error.sh" -D &'
         logger.debug("cmd to seed torrent : " + cmd1)
         cmd1_status = subprocess.call(cmd1, shell=True)
         logger.debug("Status of seed cmd : " + str(cmd1_status))
