@@ -294,7 +294,7 @@ class StorageServer:
         # aria2c --dir=/mydownloads --follow-torrent=mem --seed-time=0 --remove-control-file http://10.36.168.173/torrent/1347780080.torrent
 
         self.pause_coalescer(file_path)
-        cmd = 'aria2c -V --dir=' + os.path.dirname(file_path) + ' --out=' + os.path.basename(file_path) + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --on-bt-download-complete="/opt/storage_server/hook_complete.sh" --remove-control-file ' + torrent_url + ' --file-allocation=none --bt-stop-timeout=30'
+        cmd = 'aria2c -V --dir=' + os.path.dirname(file_path) + ' --out=' + os.path.basename(file_path) + ' --follow-torrent=mem --seed-time=0 --on-download-stop="/opt/storage_server/hook.sh" --on-bt-download-complete="/opt/storage_server/hook_complete.sh" ' + torrent_url + ' --file-allocation=none --bt-stop-timeout=30 --remove-control-file '
         logger.debug("cmd to start download : " + cmd)
         self.status = '500 Internal Server Error'
         error_code = subprocess.call(cmd, shell=True)
@@ -373,7 +373,7 @@ class StorageServer:
             self._start_response()
             return "Failed to pause coalescer."
 
-        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=1.5 --remove-control-file --stop=300 --on-download-stop="/opt/storage_server/hook.sh" --on-download-error="/opt/storage_server/hook_error.sh" -D &'
+        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=1.1 --remove-control-file --stop=300 --on-download-stop="/opt/storage_server/hook.sh" --on-download-error="/opt/storage_server/hook_error.sh" -D &'
         logger.debug("cmd to seed torrent : " + cmd1)
         cmd1_status = subprocess.call(cmd1, shell=True)
         logger.debug("Status of seed cmd : " + str(cmd1_status))
@@ -444,7 +444,14 @@ class StorageServer:
         if not os.path.exists(dir_name):
             os.makedirs(dir_name)
 
-        self.pause_coalescer(path)
+        document_root = self.environ["DOCUMENT_ROOT"]
+        splits =  path_info.split("/")
+        host_symlink = os.path.join(document_root, splits[1], splits[2])
+        host_path = os.readlink(host_symlink)
+        actual_path_prefix = host_path.replace("/var/www/html/membase_backup", "")
+        actual_path = path.replace(host_symlink, actual_path_prefix)
+
+        self.pause_coalescer(actual_path)
         f = open(path,'wb')
         while chunks is not 0:
             file_chunk = self.environ['wsgi.input'].read(4096)
@@ -456,12 +463,7 @@ class StorageServer:
         os.fsync(f)
         f.close()
 
-        document_root = self.environ["DOCUMENT_ROOT"]
-        splits =  path_info.split("/")
-        host_symlink = os.path.join(document_root, splits[1], splits[2])
-        host_path = os.readlink(host_symlink)
-        actual_path_prefix = host_path.replace("/var/www/html/membase_backup", "")
-        actual_path = path.replace(host_symlink, actual_path_prefix)
+
         dirty_file = os.path.join(host_symlink, "..", "..", "dirty")
         #self._append_to_file(dirty_file, os.path.dirname(actual_path))
         if not os.path.basename(path).startswith("lock-"):
