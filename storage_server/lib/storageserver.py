@@ -104,7 +104,6 @@ class StorageServer:
             file = "/var/tmp/disk_mapper/copy_completed"
         elif "type=dirty_files" in self.query_string:
             file_name = "dirty"
-            self.resume_coalescer(entry)
         elif "type=to_be_deleted" in self.query_string:
             file_name = "to_be_deleted"
         else:
@@ -120,6 +119,9 @@ class StorageServer:
         else:
             self._remove_line_from_file(file, entry)
         
+        if "type=copy_completed" in self.query_string or "type=dirty_files" in self.query_string:
+            self.resume_coalescer(entry)
+
         self.status = '200 OK'
         self._start_response()
         return "Successfully removed entry from file."
@@ -346,9 +348,10 @@ class StorageServer:
         if not os.path.exists(torrent_folder):
             os.makedirs(torrent_folder)
 
-        torrent_file_name = os.path.basename(file_path) + "-" + time.strftime('%s') + ".torrent"
+        host_name = os.path.dirname(file_path).split("/")[-3]
+        torrent_file_name = host_name + "-" +os.path.basename(file_path) + "-" + time.strftime('%s') + ".torrent"
         torrent_path = os.path.join(torrent_folder, torrent_file_name)
-        # btmakemetafile.py http://10.34.231.215:6969/announce /home/sqadir/backup/ --target "/tmp/back_up.torrent"
+        # btmakemetafile.py host_name + "-" + http://10.34.231.215:6969/announce /home/sqadir/backup/ --target "/tmp/back_up.torrent"
         cmd = 'btmakemetafile.py http://' + self.environ["SERVER_ADDR"] + ':6969/announce ' + file_path + ' --target ' + torrent_path
         logger.debug("Create torrent cmd : " + cmd)
         cmd_status = subprocess.call(cmd, shell=True)
@@ -521,7 +524,14 @@ class StorageServer:
         path = self.environ["PATH_TRANSLATED"]
 
         if os.path.basename(path).startswith("lock-"):
-            self.resume_coalescer(path)
+            path_info = self.environ["PATH_INFO"]
+            document_root = self.environ["DOCUMENT_ROOT"]
+            splits =  path_info.split("/")
+            host_symlink = os.path.join(document_root, splits[1], splits[2])
+            host_path = os.readlink(host_symlink)
+            actual_path_prefix = host_path.replace("/var/www/html/membase_backup", "")
+            actual_path = path.replace(host_symlink, actual_path_prefix)
+            self.resume_coalescer(actual_path)
 
         if not os.path.exists(path):
             self.status = '404 Not Found'
@@ -615,11 +625,13 @@ class StorageServer:
         self.start_response(self.status, self.response_headers)
 
     def pause_coalescer(self, path):
+        logger.info("Pausing coalescer for path : " + path)
         disk_id = path.split("/")[1][-1:]
         daily_merge_pfile = "/var/run/daily-merge-disk-" + disk_id + ".pid"
         master_merge_pfile = "/var/run/master-merge-disk-" + disk_id + ".pid"
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
         master_pid = self._get_value_pid_file(master_merge_pfile)
+        logger.info("Pausing, daily pid : " + str(daily_pid) + ", master pid : " + str(master_pid))
         try:
             if daily_pid is not False:
                 #os.kill(int(daily_pid), SIGSTOP)
@@ -634,13 +646,14 @@ class StorageServer:
             subprocess.call("sudo kill -SIGCONT -" + master_pid , shell=True)
 
     def resume_coalescer(self, path):
+        logger.info("Resuming coalescer for path : " + path)
         disk = path.split("/")[1]
         dirty_file = os.path.join("/", disk, "dirty")
-
 
         if os.path.exists(dirty_file):
             for line in open(os.path.join("/", disk, "dirty")):
                 if disk in line:
+                    logger.info("Disk in dirty file, skipping resume.")
                     return True
 
         disk_id = disk[-1:]
@@ -648,6 +661,7 @@ class StorageServer:
         master_merge_pfile = "/var/run/master-merge-disk-" + disk_id + ".pid"
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
         master_pid = self._get_value_pid_file(master_merge_pfile)
+        logger.info("Resuming, daily pid : " + str(daily_pid) + ", master pid : " + str(master_pid))
         if os.path.exists(daily_merge_pfile):
             #os.kill(int(daily_pid), SIGCONT)
             os.system("sudo kill -SIGCONT -" + daily_pid)
