@@ -414,8 +414,6 @@ class DiskMapper:
 		
 
 			for disk in disks:
-				print str(disks[disk])
-				print "======="
 				jobs.append(threading.Thread(target=self.poll_dirty_file, args=(storage_server, disks[disk])))
 
 		for j in jobs:
