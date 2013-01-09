@@ -376,7 +376,7 @@ class StorageServer:
             self._start_response()
             return "Failed to pause coalescer."
 
-        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=1.1 --remove-control-file --stop=300 --on-download-stop="/opt/storage_server/hook.sh" --on-download-error="/opt/storage_server/hook_error.sh" -D &'
+        cmd1 = "aria2c -V --dir=" + os.path.dirname(file_path) + " " + torrent_path + ' --seed-ratio=0.0 --remove-control-file --stop=300 --on-download-stop="/opt/storage_server/hook.sh" --on-download-error="/opt/storage_server/hook_error.sh" -q &'
         logger.debug("cmd to seed torrent : " + cmd1)
         cmd1_status = subprocess.call(cmd1, shell=True)
         logger.debug("Status of seed cmd : " + str(cmd1_status))
@@ -466,7 +466,6 @@ class StorageServer:
         os.fsync(f)
         f.close()
 
-
         dirty_file = os.path.join(host_symlink, "..", "..", "dirty")
         #self._append_to_file(dirty_file, os.path.dirname(actual_path))
         if not os.path.basename(path).startswith("lock-"):
@@ -548,7 +547,9 @@ class StorageServer:
             f = os.path.basename(path)
 
             if f.endswith(".torrent") and d.endswith("/torrent"):
-                os.system("ps -eo pid,args | grep %s | grep  aria2 | cut -d' ' -f2 | xargs kill -9" %f)
+                cmd = "sudo kill -9 $(ps ax | grep aria2c | grep " + f + " | awk '{print $1}')"
+                subprocess.call(cmd, shell=True)
+                #os.system("ps -eo pid,args | grep %s | grep  aria2 | cut -d' ' -f2 | xargs kill -9" %f)
 
             self.status = '200 OK'
         else:
