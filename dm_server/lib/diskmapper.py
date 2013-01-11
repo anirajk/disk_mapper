@@ -88,7 +88,7 @@ class DiskMapper:
 
 	def get_all_config(self):
 		self.status = '202 Accepted'
-		mapping = self._get_mapping ("host", None, False)
+		mapping = self._get_mapping ("host")
 
 		self.status = '200 OK'
 		self._start_response()
