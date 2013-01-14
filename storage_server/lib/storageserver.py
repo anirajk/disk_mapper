@@ -337,6 +337,13 @@ class StorageServer:
             return "Invalid arguments."
         torrent_folder = "/var/www/html/torrent"
 
+        if not os.path.exists(file_path):
+            dirty_file = os.path.join("/", file_path.split("/")[1], "dirty")
+            self._remove_line_from_file(dirty_file, file_path):
+            logger.error("File not found : " + file_path)
+            self.start_response()
+            return "File not found."
+
         ps_cmd = 'ps ax | grep "aria2c -V" | grep "' + os.path.dirname(file_path) + '" | grep -v "follow-torrent"'
         logger.debug("ps cmd : " + ps_cmd)
         if subprocess.call(ps_cmd, shell=True) != 1:
