@@ -348,7 +348,7 @@ class StorageServer:
         if not os.path.exists(torrent_folder):
             os.makedirs(torrent_folder)
 
-        host_name = os.path.dirname(file_path).split("/")[-3]
+        host_name = os.path.dirname(file_path).split("/")[3]
         torrent_file_name = host_name + "-" +os.path.basename(file_path) + "-" + time.strftime('%s') + ".torrent"
         torrent_path = os.path.join(torrent_folder, torrent_file_name)
         # btmakemetafile.py host_name + "-" + http://10.34.231.215:6969/announce /home/sqadir/backup/ --target "/tmp/back_up.torrent"
