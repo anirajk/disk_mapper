@@ -5,6 +5,8 @@ ss_server="netops-demo-mb-211.va2.zynga.com,netops-demo-mb-212.va2.zynga.com,net
 #dm_server="10.36.172.154"
 #ss_server="10.36.161.172,10.36.160.34,10.36.162.35"
 
+sudo rm -rf /root/rpmbuild/RPMS/x86_64/disk-mapper*
+sudo rm -rf /root/rpmbuild/RPMS/x86_64/storage-server*
 cd /home/sqadir/disk_mapper/dm_server
 dm_rpm=$(sudo make rpm | grep Wrote: | grep x86_64 | awk '{print $NF}') 
 dm_rpm_name=$(echo $dm_rpm | cut -d "/" -f 6)

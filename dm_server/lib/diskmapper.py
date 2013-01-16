@@ -473,15 +473,9 @@ class DiskMapper:
 		if os.path.exists(self.mapping_file) and poll == False:
 			os.remove(self.mapping_file)
 		storage_servers = config['storage_server']
-		jobs = []
+
 		for storage_server in storage_servers:
-			jobs.append(threading.Thread(target=self.update_server_config, args=(storage_server,)))
-
-		for j in jobs:
-			j.start()
-
-		while threading.activeCount() > 1:
-			pass
+			self.update_server_config(storage_server)
 
 	def update_server_config(self, storage_server):
 		server_config = self._get_server_config(storage_server)
