@@ -337,6 +337,13 @@ class StorageServer:
             return "Invalid arguments."
         torrent_folder = "/var/www/html/torrent"
 
+        if not os.path.exists(file_path):
+            dirty_file = os.path.join("/", file_path.split("/")[1], "dirty")
+            self._remove_line_from_file(dirty_file, file_path)
+            logger.error("File not found : " + file_path)
+            self.start_response()
+            return "File not found."
+
         ps_cmd = 'ps ax | grep "aria2c -V" | grep "' + os.path.dirname(file_path) + '" | grep -v "follow-torrent"'
         logger.debug("ps cmd : " + ps_cmd)
         if subprocess.call(ps_cmd, shell=True) != 1:
@@ -348,7 +355,7 @@ class StorageServer:
         if not os.path.exists(torrent_folder):
             os.makedirs(torrent_folder)
 
-        host_name = os.path.dirname(file_path).split("/")[-3]
+        host_name = os.path.dirname(file_path).split("/")[3]
         torrent_file_name = host_name + "-" +os.path.basename(file_path) + "-" + time.strftime('%s') + ".torrent"
         torrent_path = os.path.join(torrent_folder, torrent_file_name)
         # btmakemetafile.py host_name + "-" + http://10.34.231.215:6969/announce /home/sqadir/backup/ --target "/tmp/back_up.torrent"
