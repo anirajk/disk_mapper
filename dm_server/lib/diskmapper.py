@@ -9,11 +9,11 @@ import fcntl
 import time
 import json
 import pickle
-import pycurl
-import cStringIO
 import threading
 import socket
 import logging
+import httplib
+import base64
 import subprocess
 from signal import SIGSTOP, SIGCONT
 from config import config
@@ -662,49 +662,47 @@ class DiskMapper:
 		logger.debug("Curl:" + str(debug_type) + " " + str(debug_msg))
 		
 	def _curl (self, url, exp_return_code=None, insecure=False):
-		buf = cStringIO.StringIO()
 		storage_server = url.split("/")[2]
-		c = pycurl.Curl()
-		c.setopt(c.URL, str(url))
-		if insecure == True:
-			c.setopt(pycurl.SSL_VERIFYPEER,0)
-			zrt = config["zruntime"]
-			c.setopt(pycurl.USERPWD, zrt["username"] + ":" + zrt["password"])
-
-		c.setopt(c.WRITEFUNCTION, buf.write)
-		#c.setopt(pycurl.VERBOSE, 1)
-		#c.setopt(pycurl.DEBUGFUNCTION, self._curl_debug)
 		try:
-			c.perform()
+			if insecure == True:
+				conn = httplib.HTTPSConnection(storage_server)
+				zrt = config["zruntime"]
+				username = zrt["username"] 
+				password = zrt["password"]
+				auth = base64.encodestring("%s:%s" % (username, password)) 
+				headers = {"Authorization" : "Basic %s" % auth}
+				conn.request("GET", url, headers=headers)
+			else:
+				conn = httplib.HTTPConnection(storage_server)
+				conn.request("GET", url)
+
+			response = conn.getresponse()
+			conn.close()
 			if storage_server in self.bad_servers:
 				self.make_spare(storage_server)
 				self.bad_servers.remove(storage_server)
-		except pycurl.error, error :
+		except (httplib.HTTPResponse, socket.error) as error:
 			errno, errstr = error
-			if errno == 7:
+			if errno == 111:
 				self._check_server_conn(storage_server)
 			return False
 
-		if c.getinfo(pycurl.HTTP_CODE) != exp_return_code and exp_return_code != None:
-			c.close()
+		if response.status != exp_return_code and exp_return_code != None:
 			return False
 
-		value = buf.getvalue()
-		c.close()
-		buf.close()
+		value = response.read()
 		return value
 
 	def _check_server_conn(self, storage_server):
 		url = 'http://' + storage_server + '/api?action=get_config'
-		c = pycurl.Curl()
-		c.setopt(c.URL, str(url))
 		for retry in range(3):
 			try:
 				time.sleep(5)
-				c.perform()
-			except pycurl.error, error:
-				errno, errstr = error
-				if errno == 7:
+				conn = httplib.HTTPConnection(storage_server)
+                                conn.request("GET", url)
+			except (httplib.HTTPResponse, socket.error) as error:
+                        	errno, errstr = error
+				if errno == 111:
 					logger.error("Failed to connect to " + storage_server)
 			else:
 			  break

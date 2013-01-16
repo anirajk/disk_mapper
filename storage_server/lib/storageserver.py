@@ -339,7 +339,7 @@ class StorageServer:
 
         if not os.path.exists(file_path):
             dirty_file = os.path.join("/", file_path.split("/")[1], "dirty")
-            self._remove_line_from_file(dirty_file, file_path):
+            self._remove_line_from_file(dirty_file, file_path)
             logger.error("File not found : " + file_path)
             self.start_response()
             return "File not found."
