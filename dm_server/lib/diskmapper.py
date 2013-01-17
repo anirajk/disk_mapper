@@ -107,7 +107,7 @@ class DiskMapper:
 			self._start_response()
 			return "No host found"
 
-		for host_name in mapping:
+		for host_name in sorted(mapping):
 			status = None
 			host_config[host_name] = {}
 			if "primary" in mapping[host_name].keys():
@@ -244,18 +244,23 @@ class DiskMapper:
 			if server_config == False:
 				return True
 
-		for disk in server_config:
+		current_mapping = self._get_mapping("storage_server",storage_server)
+		for disk in sorted(server_config):
+			
 			status = "bad"
 			if swap_all_disk == False:
 				if disk not in bad_disks:
 					status = "good"
 
 			if status == "bad":
-				for type in server_config[disk]:
+				for type in sorted(server_config[disk]):
+					if current_mapping[disk]["status"] == "bad":
+						continue
+
 					if type == "status":
 						continue
+
 					host_name = server_config[disk][type]
-					self._update_mapping(storage_server, disk, type, host_name, status)
 					if host_name != "spare":
 						
 						if type == "primary":
@@ -266,9 +271,6 @@ class DiskMapper:
 						mapping = self._get_mapping("host", host_name)
 						if mapping == False:
 							logger.error("Failed to get mapping for " + host_name)
-							continue
-
-						if type in mapping.keys():
 							continue
 
 						try:
@@ -286,7 +288,7 @@ class DiskMapper:
 						spare = self.initialize_host(host_name, type, game_id, False)
 						
 						if spare == False:
-							logger.error("Failed to swap " + storage_server + ":/" + disk + "/" + type)
+							logger.error("Failed to swap, no spare found for " + storage_server + ":/" + disk + "/" + type)
 							continue
 
 						cp_to_server = spare["storage_server"]
@@ -294,16 +296,18 @@ class DiskMapper:
 						cp_to_type = type
 						cp_to_file = os.path.join("/", cp_to_disk, cp_to_type, host_name)
 
-						torrent_url = self._create_torrent(cp_from_server, cp_from_file)
-						if torrent_url == False:
-							logger.error("Failed to get torrent url for " + storage_server + ":" + file)
+						# Copy host
+						if  self._rehydrate_replica(cp_from_server, cp_from_file) == False:
+							logger.error("Failed to rehydrate replica for " + storage_server + ":" + cp_from_file)
 							continue
 
-						if self._start_download(cp_to_server, cp_to_file, torrent_url) == True:
-							self._update_mapping(cp_to_server, cp_to_disk, cp_to_type, host_name)
-						else:
-							logger.error("Failed to start download to " + cp_to_server + ":" + cp_to_file)
+						# Add to to-be-promoted list
+						to_be_promoted = cp_to_server + ":" + cp_to_disk + ":"  + cp_to_type + ":"  + host_name
+						if self._add_entry(cp_from_server, to_be_promoted, "to_be_promoted") == False:
+							logger.error("Failed to add " + to_be_promoted + " to to_be_promoted list on " + cp_from_server)
+							continue
 
+					self._update_mapping(storage_server, disk, type, host_name + "-bad", status)
 
 
 	def delete_merged_files(self):
@@ -343,7 +347,6 @@ class DiskMapper:
 
 		files = replica_files.split("\n")
 		sorted_files = self._uniq(files)
-		[ x.strip() for x in sorted_files ]
 		for file in sorted_files:
 			if file == "":
 				continue
@@ -387,9 +390,31 @@ class DiskMapper:
 		jobs = []
 		for storage_server in storage_servers:
 			dirty_file = self._get_dirty_file(storage_server)
+			to_be_promoted = self._get_to_be_promoted(storage_server)
+
 			if dirty_file == False:
 				logger.error("Failed to get dirty file from storage server: " + storage_server)
 				return False
+
+			if to_be_promoted != False:
+				for line in to_be_promoted.split("\n"):
+					splits = line.split(":")
+					host_name = splits[-1]
+					if host_name not in dirty_file:
+						replica_server = splits[0]
+						replica_disk = splits[1]
+						replica_type = splits[2]
+						promote_flag = os.path.join("/", replica_disk, replica_type, host_name, ".promoting")
+						if not self._delete_file(replica_server, promote_flag):
+							logger.error("Failed to remove .promoting for " + line)
+						else:
+							if not self._update_mapping(replica_server, replica_disk, replica_type, host_name , "good"):
+								logger.error("Failed to update mapping for " + line)
+							elif not self._remove_entry(storage_server, line, "to_be_promoted"):
+								logger.error("Failed to remove " + line + "from to be promoted file")
+								
+								
+
 
 			bad_disks = self._get_bad_disks(storage_server)
 			if bad_disks == False:
@@ -397,7 +422,6 @@ class DiskMapper:
 
 			files = dirty_file.split("\n")
 			sorted_files = self._uniq(files)
-			[ x.strip() for x in sorted_files ]
 			disks = {}
 			for file in sorted_files:
 				if file == "":
@@ -414,7 +438,7 @@ class DiskMapper:
 		
 
 			for disk in disks:
-				jobs.append(threading.Thread(target=self.poll_dirty_file, args=(storage_server, disks[disk])))
+				jobs.append(threading.Thread(target=self.poll_dirty_file, args=(storage_server, disks[disk], to_be_promoted)))
 
 		for j in jobs:
 			j.start()
@@ -422,7 +446,7 @@ class DiskMapper:
 		while threading.activeCount() > 1:
 			pass
 
-	def poll_dirty_file(self, storage_server,files):
+	def poll_dirty_file(self, storage_server,files, to_be_promoted):
 		for file in files:
 			logger.info("Handling : " + file )
 			if file == "":
@@ -442,13 +466,22 @@ class DiskMapper:
 			elif cp_from_type == "secondary":
 				cp_to_type = "primary"
 
-			try:
-				cp_to_server = mapping[cp_to_type]["storage_server"]
-				cp_to_disk = mapping[cp_to_type]["disk"]
-				cp_to_file = file.replace(cp_from_disk,cp_to_disk).replace(cp_from_type, cp_to_type)
-			except KeyError:
-				logger.error("Failed to find corresponding replica for " + file)
-				return True
+			if to_be_promoted != False and host_name in to_be_promoted:
+				for line in to_be_promoted.split("\n"):
+					if host_name in line:
+						splits = line.split(":")
+						cp_to_server = splits[0]
+						cp_to_disk = splits[1]
+						cp_to_file = file.replace(cp_from_disk,cp_to_disk).replace(cp_from_type, cp_to_type)
+
+			else:
+				try:
+					cp_to_server = mapping[cp_to_type]["storage_server"]
+					cp_to_disk = mapping[cp_to_type]["disk"]
+					cp_to_file = file.replace(cp_from_disk,cp_to_disk).replace(cp_from_type, cp_to_type)
+				except KeyError:
+					logger.error("Failed to find corresponding replica for " + file)
+					return True
 
 			torrent_url = self._create_torrent(cp_from_server, file)
 			if torrent_url == "True":
@@ -488,12 +521,12 @@ class DiskMapper:
 			logger.error("Failed to get bad disks form storage server: " + storage_server)
 			return False
 
-		for disk in server_config:
+		for disk in sorted(server_config):
 			if disk in bad_disks or storage_server in self.bad_servers:
 				status = "bad"
 			else:
 				status = "good"
-			for type in server_config[disk]:
+			for type in sorted(server_config[disk]):
 				host_name = server_config[disk][type]
 				self._update_mapping(storage_server, disk, type, host_name, status)
 					
@@ -549,6 +582,14 @@ class DiskMapper:
 
 					self._make_spare(storage_server, type, disk)
 					
+	def _rehydrate_replica(self, storage_server, path):
+		# http://http://netops-demo-mb-212.va2/api/?action=copy_host&path=/data_1/primary/game-mb-18/
+		url = 'http://' + storage_server + '/api?action=copy_host&path=' + path
+		value = self._curl(url, 200)
+		if value != False:
+			return True
+		return False
+
 	def _create_torrent(self, storage_server, file):
 		# http://netops-demo-mb-220.va2/api/membase_backup?action=create_torrent&file_path=/data_2/primary/empire-mb-user-b-001/zc1/incremental/test1/
 		url = 'http://' + storage_server + '/api?action=create_torrent&file_path=' + file
@@ -597,6 +638,13 @@ class DiskMapper:
 			return True
 		return False
 
+	def _get_to_be_promoted(self, storage_server):
+		url = 'http://' + storage_server + '/api?action=get_file&type=to_be_promoted'
+		value = self._curl(url, 200)
+		if value != False:
+			return json.loads(value)
+		return False
+
 	def _get_bad_disks(self, storage_server):
 		url = 'http://' + storage_server + '/api?action=get_file&type=bad_disk'
 		value = self._curl(url, 200)
@@ -605,7 +653,10 @@ class DiskMapper:
 		return False
 		
 	def _initialize_host(self, storage_server, host_name, type, game_id, disk, update_mapping=True):
-		url = 'http://' + storage_server + '/api?action=initialize_host&host_name=' + host_name + '&type=' + type + '&game_id=' + game_id + '&disk=' + disk
+		if update_mapping == True:
+			url = 'http://' + storage_server + '/api?action=initialize_host&host_name=' + host_name + '&type=' + type + '&game_id=' + game_id + '&disk=' + disk
+		else:
+			url = 'http://' + storage_server + '/api?action=initialize_host&host_name=' + host_name + '&type=' + type + '&game_id=' + game_id + '&disk=' + disk + '&promote=true'
 		logger.debug("Initial request url : " + str(url))
 		value = self._curl(url, 201)
 		if value != False:
@@ -731,12 +782,12 @@ class DiskMapper:
 		spare_type_mapping = {}
 		spare_mapping["primary"] = []
 		spare_mapping["secondary"] = []
-		for storage_server in mapping:
+		for storage_server in sorted(mapping):
 			if storage_server == skip or storage_server in self.bad_servers:
 				continue
 			spare_type_mapping[storage_server] = []
-			for disk in mapping[storage_server]:
-				for disk_type in mapping[storage_server][disk]:
+			for disk in sorted(mapping[storage_server]):
+				for disk_type in sorted(mapping[storage_server][disk]):
 					if disk_type == "primary" or disk_type == "secondary":
 						host_name = mapping[storage_server][disk][disk_type]
 						if host_name == "spare" and mapping[storage_server][disk]["status"] != "bad":
@@ -747,7 +798,7 @@ class DiskMapper:
 		if type != None:
 			highest_spare_count = 0
 			server_with_most_spare = None
-			for storage_server in spare_type_mapping:
+			for storage_server in sorted(spare_type_mapping):
 				current_count = len(spare_type_mapping[storage_server])
 				if current_count > highest_spare_count:
 					highest_spare_count = current_count
@@ -774,9 +825,9 @@ class DiskMapper:
 		#logger.debug("Mapping in file : " + str(file_content))
 		if type == "host":
 			mapping = {}
-			for storage_server in file_content:
-				for disk in file_content[storage_server]:
-					for disk_type in file_content[storage_server][disk]:
+			for storage_server in sorted(file_content):
+				for disk in sorted(file_content[storage_server]):
+					for disk_type in sorted(file_content[storage_server][disk]):
 						if disk_type == "primary" or disk_type == "secondary":
 							host_name = file_content[storage_server][disk][disk_type]
 							status = file_content[storage_server][disk]["status"]

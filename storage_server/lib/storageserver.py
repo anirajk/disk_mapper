@@ -45,11 +45,43 @@ class StorageServer:
             self.status = '403 Forbidden'
             files = "Cannot access file."
         else:
-            file_list = self._file_iterater(path)
+            recursive = False
+            if "recursive=true" in self.query_string:
+                recursive = True
+            file_list = self._file_iterater(path, recursive)
             files = self._get_s3_path(file_list)
 
         self._start_response()
         return [files + "\n"]
+
+    def copy_host(self):
+        self.status = '202 Accepted'
+
+        qs = parse_qs(self.query_string)
+        try:
+            path =  qs["path"][0]
+        except KeyError:
+            self.status = '400 Bad Request'
+            self._start_response()
+            return "Invalid arguments."
+
+        logger.debug("file_path : " + path)
+        if not os.path.exists(path):
+            logger.debug("File not found : " + path)
+            self.status = '400 Bad Request'
+            files = "File not found."
+        elif not os.access(path, os.R_OK):
+            logger.debug("Cannot access file : " + path)
+            self.status = '403 Forbidden'
+            files = "Cannot access file."
+        else:
+            file_list = self._file_iterater(path, True, True)
+
+        self._append_to_file(os.path.join("/", path.split("/")[1], "dirty"), file_list)
+
+        self.status = '200 OK'
+        self._start_response()
+        return [file_list + "\n"]
 
     def add_entry(self):
         self.status = '202 Accepted'
@@ -57,6 +89,8 @@ class StorageServer:
         logger.debug("query : " + self.query_string)
         if "type=bad_disk" in self.query_string:
             file = "/var/tmp/disk_mapper/bad_disk"
+        elif "type=to_be_promoted" in self.query_string:
+            file = "/var/tmp/disk_mapper/to_be_promoted"
         elif "type=dirty_files" in self.query_string:
             file_name = "dirty"
         elif "type=copy_completed" in self.query_string:
@@ -78,8 +112,10 @@ class StorageServer:
             for partition_name in sorted(glob.glob('/var/www/html/membase_backup/data_*')):
                 file = partition_name + "/" + file_name
                 self._append_to_file(file, entry)
-        else:
+        elif "type=bad_disk" in self.query_string:
             self._kill_torrent(entry)
+            self._append_to_file(file, entry)
+        else:
             self._append_to_file(file, entry)
 
         self.status = '200 OK'
@@ -100,6 +136,8 @@ class StorageServer:
 
         if "type=bad_disk" in self.query_string:
             file = "/var/tmp/disk_mapper/bad_disk"
+        elif "type=to_be_promoted" in self.query_string:
+            file = "/var/tmp/disk_mapper/to_be_promoted"
         elif "type=copy_completed" in self.query_string:
             file = "/var/tmp/disk_mapper/copy_completed"
         elif "type=dirty_files" in self.query_string:
@@ -151,6 +189,8 @@ class StorageServer:
 
         if "type=bad_disk" in self.query_string:
             file = "/var/tmp/disk_mapper/bad_disk"
+        elif "type=to_be_promoted" in self.query_string:
+            file = "/var/tmp/disk_mapper/to_be_promoted"
         elif "type=copy_completed" in self.query_string:
             file = "/var/tmp/disk_mapper/copy_completed"
         elif "type=to_be_deleted" in self.query_string:
@@ -260,7 +300,8 @@ class StorageServer:
                                 mapping[disk].update({type : "spare"})
                             else:
                                 for host_name in os.listdir(type_path):
-                                    mapping[disk].update({type : host_name})
+                                    if not os.path.exists(os.path.join(type_path, host_name, ".promoting")):
+                                        mapping[disk].update({type : host_name})
 
         self.status = '200 OK'
         self._start_response()
@@ -431,6 +472,9 @@ class StorageServer:
             os.remove(sym_link_name)   
         os.symlink(sym_link_path, sym_link_name)
 
+        if "promote=true" in self.query_string:
+            subprocess.call("touch " + actual_path + "/.promoting" , shell=True)
+
         self.status = '201 Created'
         self._start_response()
         return "Host initialized"
@@ -505,7 +549,7 @@ class StorageServer:
             self._start_response()
             return ["File not found."]
 
-        if len(file_name.split("/")) < 7:
+        if ".promoting" not in file_name and len(file_name.split("/")) < 7:
             self.status = '400 Bad Request'
             self._start_response()
             return "Invalid arguments."
@@ -591,7 +635,7 @@ class StorageServer:
             return True
         return False
 
-    def _file_iterater(self, path, recursive=False):
+    def _file_iterater(self, path, recursive=False, ignore_dir=False):
 
         files = []
 
@@ -599,7 +643,7 @@ class StorageServer:
             self.response_headers.append(('Etag', self._get_md5sum(open(path, "r"))))
             return path
             
-        if "recursive=true" not in self.query_string:
+        if recursive == False:
             for item in os.listdir(path):
                 full_path = os.path.join(path, item)
                 if os.path.isdir(full_path):
@@ -610,8 +654,9 @@ class StorageServer:
             for root, dirnames, filenames in os.walk(path, followlinks=True):
                 for name in filenames:
                     files.append(os.path.join(root, name))
-                for name in dirnames:
-                    files.append(os.path.join(root, name) + "/")
+                if ignore_dir == False:
+                    for name in dirnames:
+                        files.append(os.path.join(root, name) + "/")
 
         return "\n".join(sorted(files))
     

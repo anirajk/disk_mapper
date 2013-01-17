@@ -26,6 +26,9 @@ def index(environ, start_response):
         if "list" in action:
             return ss.list()
 
+        if "copy_host" in action:
+            return ss.copy_host()
+
         if "add_entry" in action:
             return ss.add_entry()
 
