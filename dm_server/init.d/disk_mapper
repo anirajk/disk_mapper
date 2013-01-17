@@ -43,8 +43,11 @@ start(){
 
 stop(){
     echo -n "Stopping Disk Mapper"
+    PID=$(cat $PIDFILE)
     rm -rf $LOCKFILE
-    sleep 5
+    while  $(checkpid $PID) ; do
+        sleep 1
+    done
     if [ ! -f $LOCKFILE ];
     then
         echo_success
