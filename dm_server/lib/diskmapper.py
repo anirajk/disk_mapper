@@ -339,6 +339,7 @@ class DiskMapper:
 	def update_replica_file(self, storage_server, type):
 		if type == "to_be_deleted":
 			replica_files = self._get_to_be_deleted(storage_server)
+			dirty_file = self._get_dirty_file(storage_server)
 		else:
 			replica_files = self._get_copy_completed(storage_server)
 		if replica_files == False:
@@ -350,6 +351,10 @@ class DiskMapper:
 		for file in sorted_files:
 			if file == "":
 				continue
+
+			if type == "to_be_deleted" and file in dirty_file:
+				continue
+
 			source_detail = file.split("/")
 			source_server = storage_server
 			try:
