@@ -684,18 +684,19 @@ class StorageServer:
         master_merge_pfile = "/var/run/master-merge-disk-" + disk_id + ".pid"
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
         master_pid = self._get_value_pid_file(master_merge_pfile)
-        logger.info("Pausing, daily pid : " + str(daily_pid) + ", master pid : " + str(master_pid))
+
+        if daily_pid != False:
+            logger.info("Paused daily merge, pid : " + str(daily_pid) 
+        if master_pid != False:
+            logger.info("Paused master merge, pid : " + str(master_pid) 
+
         try:
             if daily_pid is not False:
-                #os.kill(int(daily_pid), SIGSTOP)
                 os.system("sudo kill -SIGSTOP -" + daily_pid)
             if master_pid is not False:
-                #os.kill(int(master_pid), SIGSTOP)
                 os.system("sudo kill -SIGSTOP -" + master_pid)
         except:
-            #os.kill(int(daily_pid), SIGCONT)
             subprocess.call("sudo kill -SIGCONT -" + daily_pid , shell=True)
-            #os.kill(int(master_pid), SIGCONT)
             subprocess.call("sudo kill -SIGCONT -" + master_pid , shell=True)
 
     def resume_coalescer(self, path):
@@ -714,13 +715,17 @@ class StorageServer:
         master_merge_pfile = "/var/run/master-merge-disk-" + disk_id + ".pid"
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
         master_pid = self._get_value_pid_file(master_merge_pfile)
-        logger.info("Resuming, daily pid : " + str(daily_pid) + ", master pid : " + str(master_pid))
+
         if os.path.exists(daily_merge_pfile):
-            #os.kill(int(daily_pid), SIGCONT)
             os.system("sudo kill -SIGCONT -" + daily_pid)
         if os.path.exists(master_merge_pfile):
-            #os.kill(int(master_pid), SIGCONT)
             os.system("sudo kill -SIGCONT -" + master_pid)
+
+        if daily_pid != False:
+            logger.info("Resumed daily merge, pid : " + str(daily_pid) 
+        if master_pid != False:
+            logger.info("Resumed master merge, pid : " + str(master_pid)
+
 
     def _get_value_pid_file(self, file):
         try:
