@@ -114,6 +114,7 @@ class StorageServer:
                 self._append_to_file(file, entry)
         elif "type=bad_disk" in self.query_string:
             self._kill_torrent(entry)
+            self._kill_merge(entry)
             self._append_to_file(file, entry)
         else:
             self._append_to_file(file, entry)
@@ -760,4 +761,14 @@ class StorageServer:
 
     def _kill_torrent(self, disk):
         cmd = "kill -2 $(ps ax | grep aria2c | grep " + disk + " | awk '{print $1}')"
+        subprocess.call(cmd, shell=True)
+
+    def _kill_merge(self, disk):
+	daily_merge_pfile = "/var/run/daily-merge-disk-" + disk + ".pid"
+        master_merge_pfile = "/var/run/master-merge-disk-" + disk + ".pid"
+
+        daily_pid = self._get_value_pid_file(daily_merge_pfile)
+        master_pid = self._get_value_pid_file(master_merge_pfile)
+
+        cmd = "kill -2 " + daily_pid + " " + master_pid
         subprocess.call(cmd, shell=True)
