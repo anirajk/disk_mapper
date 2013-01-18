@@ -687,11 +687,13 @@ class StorageServer:
 
         try:
             if daily_pid is not False:
-                os.system("sudo kill -SIGSTOP -" + daily_pid)
-                logger.info("Paused daily merge, pid : " + str(daily_pid))
+                if not subprocess.call('[[ $(ps ax | grep ' + daily_pid + ' | grep -v grep | awk \'{print $3}\') == "T" ]]'):
+                    os.system("sudo kill -SIGSTOP -" + daily_pid)
+                    logger.info("Paused daily merge, pid : " + str(daily_pid))
             if master_pid is not False:
-                os.system("sudo kill -SIGSTOP -" + master_pid)
-                logger.info("Paused master merge, pid : " + str(master_pid))
+                if not subprocess.call('[[ $(ps ax | grep ' + master_pid + ' | grep -v grep | awk \'{print $3}\') == "T" ]]'):
+                    os.system("sudo kill -SIGSTOP -" + master_pid)
+                    logger.info("Paused master merge, pid : " + str(master_pid))
         except:
             subprocess.call("sudo kill -SIGCONT -" + daily_pid , shell=True)
             subprocess.call("sudo kill -SIGCONT -" + master_pid , shell=True)
