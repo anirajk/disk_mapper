@@ -4,13 +4,24 @@ import time
 import os
 import logging
 from lib.diskmapper import DiskMapper
+from config import config
 
 logger = logging.getLogger('disk_mapper_daemon')
 hdlr = logging.FileHandler('/var/log/disk_mapper.log')
 formatter = logging.Formatter('%(asctime)s %(process)d %(thread)d %(filename)s %(lineno)d %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
-logger.setLevel(logging.INFO)
+
+log_level = config["params"]["log_level"]
+
+if log_level == "info":
+    logger.setLevel(logging.INFO)
+elif log_level == "error":
+    logger.setLevel(logging.ERROR)
+elif log_level == "debug":
+    logger.setLevel(logging.DEBUG)
+
+poll_interval = config["params"]["poll_interval"]
 
 def is_daemon_stopped():
     if not os.path.exists("/var/run/disk_mapper.lock"):
@@ -46,7 +57,7 @@ try:
         logger.debug(dm._get_mapping("storage_server"))
         logger.debug("===")
         logger.debug(dm._get_mapping("host"))
-        time.sleep(5)
+        time.sleep(poll_interval)
 except Exception, e:
     print e
     logger.error(e)

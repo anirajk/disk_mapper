@@ -14,5 +14,9 @@ config = {
                'env' : 'auto',
                'mcs_key_name' : 'ACTIVE_MCS',
               },
+    'params':
+            {'poll_interval' : 5,
+             'log_level' : 'info',
+            },
 }
 

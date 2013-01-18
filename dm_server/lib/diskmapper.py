@@ -24,7 +24,16 @@ hdlr = logging.FileHandler('/var/log/disk_mapper.log')
 formatter = logging.Formatter('%(asctime)s %(process)d %(thread)d %(filename)s %(lineno)d %(levelname)s %(message)s')
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
-logger.setLevel(logging.INFO)
+
+log_level = config["params"]["log_level"]
+
+if log_level == "info":
+    logger.setLevel(logging.INFO)
+elif log_level == "error":
+    logger.setLevel(logging.ERROR)
+elif log_level == "debug":
+    logger.setLevel(logging.DEBUG)
+
 
 class DiskMapper:
 
