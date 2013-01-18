@@ -244,7 +244,6 @@ class DiskMapper:
 			if server_config == False:
 				return True
 
-		current_mapping = self._get_mapping("storage_server",storage_server)
 		for disk in sorted(server_config):
 			
 			status = "bad"
@@ -254,8 +253,6 @@ class DiskMapper:
 
 			if status == "bad":
 				for type in sorted(server_config[disk]):
-					if current_mapping[disk]["status"] == "bad":
-						continue
 
 					if type == "status":
 						continue
@@ -273,6 +270,10 @@ class DiskMapper:
 							logger.error("Failed to get mapping for " + host_name)
 							continue
 
+						if type in mapping.keys():
+							continue
+
+
 						try:
 							cp_from_server = mapping[cp_from_type]["storage_server"]
 							cp_from_disk = mapping[cp_from_type]["disk"]
@@ -280,6 +281,11 @@ class DiskMapper:
 						except KeyError:
 							continue
 
+						to_be_promoted = self._get_to_be_promoted(cp_from_server)
+						if host_name in to_be_promoted:
+							continue
+
+						logger.info("Found bad disk : " +  storage_server + ":/" + disk + "/" + type + "/" + host_name)
 						game_id = self._get_game_id(host_name, cp_from_server)
 						if game_id == False:
 							logger.error("Failed to get mapping for " + host_name)
