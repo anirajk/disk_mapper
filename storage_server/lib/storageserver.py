@@ -679,7 +679,6 @@ class StorageServer:
         self.start_response(self.status, self.response_headers)
 
     def pause_coalescer(self, path):
-        logger.info("Pausing coalescer for path : " + path)
         disk_id = path.split("/")[1][-1:]
         daily_merge_pfile = "/var/run/daily-merge-disk-" + disk_id + ".pid"
         master_merge_pfile = "/var/run/master-merge-disk-" + disk_id + ".pid"
@@ -687,20 +686,19 @@ class StorageServer:
         master_pid = self._get_value_pid_file(master_merge_pfile)
 
         try:
-            if daily_pid is not False:
-                if not subprocess.call('[[ $(ps ax | grep ' + daily_pid + ' | grep -v grep | awk \'{print $3}\') == "T" ]]'):
-                    os.system("sudo kill -SIGSTOP -" + daily_pid)
+            if daily_pid != False:
+                if subprocess.call('[[ $(ps ax | grep ' + str(daily_pid) + ' | grep -v grep | awk \'{print $3}\') == "T" ]]', shell=True) != 0:
+                    os.system("sudo kill -SIGSTOP -" + str(daily_pid))
                     logger.info("Paused daily merge, pid : " + str(daily_pid))
-            if master_pid is not False:
-                if not subprocess.call('[[ $(ps ax | grep ' + master_pid + ' | grep -v grep | awk \'{print $3}\') == "T" ]]'):
-                    os.system("sudo kill -SIGSTOP -" + master_pid)
+            if master_pid != False:
+                if subprocess.call('[[ $(ps ax | grep ' + str(master_pid) + ' | grep -v grep | awk \'{print $3}\') == "T" ]]', shell=True) != 0:
+                    os.system("sudo kill -SIGSTOP -" + str(master_pid))
                     logger.info("Paused master merge, pid : " + str(master_pid))
         except:
-            subprocess.call("sudo kill -SIGCONT -" + daily_pid , shell=True)
-            subprocess.call("sudo kill -SIGCONT -" + master_pid , shell=True)
+            subprocess.call("sudo kill -SIGCONT -" + str(daily_pid) , shell=True)
+            subprocess.call("sudo kill -SIGCONT -" + str(master_pid) , shell=True)
 
     def resume_coalescer(self, path):
-        logger.info("Resuming coalescer for path : " + path)
         disk = path.split("/")[1]
         dirty_file = os.path.join("/", disk, "dirty")
 
@@ -717,10 +715,10 @@ class StorageServer:
         master_pid = self._get_value_pid_file(master_merge_pfile)
 
         if os.path.exists(daily_merge_pfile):
-            os.system("sudo kill -SIGCONT -" + daily_pid)
+            os.system("sudo kill -SIGCONT -" + str(daily_pid))
             logger.info("Resumed daily merge, pid : " + str(daily_pid))
         if os.path.exists(master_merge_pfile):
-            os.system("sudo kill -SIGCONT -" + master_pid)
+            os.system("sudo kill -SIGCONT -" + str(master_pid))
             logger.info("Resumed master merge, pid : " + str(master_pid))
 
     def _get_value_pid_file(self, file):
