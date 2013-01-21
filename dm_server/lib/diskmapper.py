@@ -25,9 +25,8 @@ formatter = logging.Formatter('%(asctime)s %(process)d %(thread)d %(filename)s %
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 
-if "params" not in config.keys():
-	logger.setLevel(logging.INFO)
-elif "log_level" in config["params"].keys():
+logger.setLevel(logging.INFO)
+if "params" in config.keys() and "log_level" in config["params"].keys():
 	log_level = config["params"]["log_level"]
 	if log_level == "info":
 		logger.setLevel(logging.INFO)

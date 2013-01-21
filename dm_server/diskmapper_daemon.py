@@ -12,19 +12,21 @@ formatter = logging.Formatter('%(asctime)s %(process)d %(thread)d %(filename)s %
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 
-if "params" not in config.keys():
-    logger.setLevel(logging.INFO)
-    poll_interval = 5
-elif "log_level" in config["params"].keys():
-    log_level = config["params"]["log_level"]
-    if log_level == "info":
-        logger.setLevel(logging.INFO)
-    elif log_level == "error":
-        logger.setLevel(logging.ERROR)
-    elif log_level == "debug":
-        logger.setLevel(logging.DEBUG)
-elif poll_interval in config["params"].keys():
-    poll_interval = config["params"]["poll_interval"]
+logger.setLevel(logging.INFO)
+poll_interval = 5
+
+if "params" in config.keys():
+    if "log_level" in config["params"].keys():
+        log_level = config["params"]["log_level"]
+        if log_level == "info":
+            logger.setLevel(logging.INFO)
+        elif log_level == "error":
+            logger.setLevel(logging.ERROR)
+        elif log_level == "debug":
+            logger.setLevel(logging.DEBUG)
+
+    if poll_interval in config["params"].keys():
+        poll_interval = config["params"]["poll_interval"]
 
 def is_daemon_stopped():
     if not os.path.exists("/var/run/disk_mapper.lock"):
