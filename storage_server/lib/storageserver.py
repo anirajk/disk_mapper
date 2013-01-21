@@ -770,5 +770,5 @@ class StorageServer:
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
         master_pid = self._get_value_pid_file(master_merge_pfile)
 
-        cmd = "kill -2 " + daily_pid + " " + master_pid
+        cmd = "kill -2 " + str(daily_pid) + " " + str(master_pid)
         subprocess.call(cmd, shell=True)
