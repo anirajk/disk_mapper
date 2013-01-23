@@ -177,7 +177,7 @@ class StorageServer:
         f.seek(0, 0)
         f.truncate()
         for line in file_content:
-            if entry not in line:
+            if entry.strip('\n') != line.strip('\n'):
                 f.write(line)
         os.fsync(f)
         f.close()
@@ -762,7 +762,7 @@ class StorageServer:
         subprocess.call(cmd, shell=True)
 
     def _kill_merge(self, disk):
-	daily_merge_pfile = "/var/run/daily-merge-disk-" + disk + ".pid"
+        daily_merge_pfile = "/var/run/daily-merge-disk-" + disk + ".pid"
         master_merge_pfile = "/var/run/master-merge-disk-" + disk + ".pid"
 
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
