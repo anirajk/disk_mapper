@@ -528,12 +528,24 @@ class StorageServer:
         return ["Saved file to disk"]
 
     def _append_to_file(self, file, line):
+        lock = open("%s.lock" %file, 'w')
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        
+        f = open(file, 'r')
+        file_content = f.readlines()
+        f.close()
+
+        for entry in file_content:
+            if entry.strip('\n') == line.strip('\n'):
+                return True
+        
         f = open(file, 'a+')
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
         f.write(line + "\n")
         os.fsync(f)
-        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
         f.close()    
+        
+        fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
+        lock.close()
 
     def delete_merged_file(self):
         self.status = '202 Accepted'
