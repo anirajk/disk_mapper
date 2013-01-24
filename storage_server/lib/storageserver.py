@@ -762,11 +762,11 @@ class StorageServer:
         subprocess.call(cmd, shell=True)
 
     def _kill_merge(self, disk):
-        daily_merge_pfile = "/var/run/daily-merge-disk-" + disk + ".pid"
-        master_merge_pfile = "/var/run/master-merge-disk-" + disk + ".pid"
+        daily_merge_pfile = "/var/run/daily-merge-disk-" + disk.replace("data_","") + ".pid"
+        master_merge_pfile = "/var/run/master-merge-disk-" + disk.replace("data_","") + ".pid"
 
         daily_pid = self._get_value_pid_file(daily_merge_pfile)
         master_pid = self._get_value_pid_file(master_merge_pfile)
 
-        cmd = "sudo kill -2 " + str(daily_pid) + " " + str(master_pid)
+        cmd = "sudo kill -2 -" + str(daily_pid) + " -" + str(master_pid)
         subprocess.call(cmd, shell=True)
