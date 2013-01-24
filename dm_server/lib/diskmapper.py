@@ -367,7 +367,7 @@ class DiskMapper:
 			if file == "":
 				continue
 
-			if type == "to_be_deleted" and file in dirty_file:
+			if type == "to_be_deleted" and dirty_file != "":
 				continue
 
 			source_detail = file.split("/")
