@@ -75,14 +75,14 @@ class DiskMapper:
 			status = mapping["primary"]["status"]
 			#logger.debug("Primary mapping : " + str(mapping["primary"]))
 
-		if status == "bad" or status == None:
+		if status == "bad" or status == None or status == "unprocessed_state":
 			logger.info("Primary disk is not available or is bad.")
 			if "secondary" in mapping.keys():
 				logger.info("Found secondary for " + host_name)
 				storage_server = mapping["secondary"]["storage_server"]
 				status = mapping["secondary"]["status"]
 				#logger.debug("Secondary mapping : " + str(mapping["secondary"]))
-				if status == "bad" or status == None:
+				if status == "bad" or status == None or status == "unprocessed_state":
 					logger.error("Both primary and secondary are bad disks.")
 					self.status = '412 Precondition Failed'
 					self._start_response()
@@ -125,12 +125,12 @@ class DiskMapper:
 				status = mapping[host_name]["primary"]["status"]
 				
 
-			if status == "bad" or status == None:
+			if status == "bad" or status == None or status == "unprocessed_state":
 				if "secondary" in mapping[host_name].keys():
 					storage_server = mapping[host_name]["secondary"]["storage_server"]
 					disk = mapping[host_name]["secondary"]["disk"]
 					status = mapping[host_name]["secondary"]["status"]
-					if status == "bad" or status == None:
+					if status == "bad" or status == None or status == "unprocessed_state":
 						continue
 
 			host_config[host_name].update({"storage_server" : storage_server, "disk" : disk})
@@ -547,7 +547,7 @@ class DiskMapper:
 			return False
 
 		for disk in sorted(server_config):
-			status = None
+			status = "unprocessed_state"
 			if disk in bad_disks or storage_server in self.bad_servers:
 				current_mapping = self._get_mapping("storage_server",storage_server)
 				if disk in current_mapping.keys():
@@ -819,7 +819,7 @@ class DiskMapper:
 				for disk_type in sorted(mapping[storage_server][disk]):
 					if disk_type == "primary" or disk_type == "secondary":
 						host_name = mapping[storage_server][disk][disk_type]
-						if host_name == "spare" and mapping[storage_server][disk]["status"] != "bad":
+						if host_name == "spare" and mapping[storage_server][disk]["status"] == "good":
 							if type == disk_type:
 								spare_type_mapping[storage_server].append(disk)
 							spare_mapping[disk_type].append({ "disk" : disk, "storage_server" : storage_server})
