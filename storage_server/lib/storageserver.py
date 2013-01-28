@@ -531,13 +531,14 @@ class StorageServer:
         lock = open("%s.lock" %file, 'w')
         fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
         
-        f = open(file, 'r')
-        file_content = f.readlines()
-        f.close()
+        if os.path.exists(file):
+            f = open(file, 'r')
+            file_content = f.readlines()
+            f.close()
 
-        for entry in file_content:
-            if entry.strip('\n') == line.strip('\n'):
-                return True
+            for entry in file_content:
+                if entry.strip('\n') == line.strip('\n'):
+                    return True
         
         f = open(file, 'a+')
         f.write(line + "\n")
