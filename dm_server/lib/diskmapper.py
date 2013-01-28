@@ -82,7 +82,7 @@ class DiskMapper:
 				storage_server = mapping["secondary"]["storage_server"]
 				status = mapping["secondary"]["status"]
 				#logger.debug("Secondary mapping : " + str(mapping["secondary"]))
-				if status == "bad":
+				if status == "bad" or status == None:
 					logger.error("Both primary and secondary are bad disks.")
 					self.status = '412 Precondition Failed'
 					self._start_response()
@@ -130,7 +130,7 @@ class DiskMapper:
 					storage_server = mapping[host_name]["secondary"]["storage_server"]
 					disk = mapping[host_name]["secondary"]["disk"]
 					status = mapping[host_name]["secondary"]["status"]
-					if status == "bad":
+					if status == "bad" or status == None:
 						continue
 
 			host_config[host_name].update({"storage_server" : storage_server, "disk" : disk})
@@ -194,12 +194,12 @@ class DiskMapper:
 		skip_storage_server = None
 		if mapping != False:
 			if type == "primary" and "secondary" in mapping.keys():
-				if mapping["secondary"]["status"] != "bad":
+				if mapping["secondary"]["status"] == "good":
 					skip_storage_server =  mapping["secondary"]["storage_server"]
 					logger.info("Skip server : " + skip_storage_server)
 
 			if type == "secondary" and "primary" in mapping.keys():
-				if mapping["primary"]["status"] != "bad":
+				if mapping["primary"]["status"] == "good":
 					skip_storage_server =  mapping["primary"]["storage_server"]
 					logger.info("Skip server : " + skip_storage_server)
 		
@@ -253,6 +253,7 @@ class DiskMapper:
 			if server_config == False:
 				return True
 
+		current_mapping = self._get_mapping("storage_server",storage_server)
 		for disk in sorted(server_config):
 			
 			status = "bad"
@@ -261,6 +262,9 @@ class DiskMapper:
 					status = "good"
 
 			if status == "bad":
+				if current_mapping[disk]["status"] == "bad":
+					continue
+
 				for type in sorted(server_config[disk]):
 
 					if type == "status":
@@ -367,8 +371,6 @@ class DiskMapper:
 			if file == "":
 				continue
 
-			if type == "to_be_deleted" and dirty_file != "":
-				continue
 
 			source_detail = file.split("/")
 			source_server = storage_server
@@ -378,6 +380,9 @@ class DiskMapper:
 				host_name = source_detail[3]
 			except IndexError:
 				return True
+
+			if type == "to_be_deleted" and source_disk in dirty_file :
+				continue
 
 			mapping = self._get_mapping("host", host_name)
 			if source_type == "primary":
@@ -542,8 +547,12 @@ class DiskMapper:
 			return False
 
 		for disk in sorted(server_config):
+			status = None
 			if disk in bad_disks or storage_server in self.bad_servers:
-				status = "bad"
+				current_mapping = self._get_mapping("storage_server",storage_server)
+				if disk in current_mapping.keys():
+					if current_mapping[disk]["status"] == "bad":
+						status = "bad"
 			else:
 				status = "good"
 			for type in sorted(server_config[disk]):
@@ -855,7 +864,7 @@ class DiskMapper:
 								if host_name not in mapping.keys():
 									mapping[host_name] = {}
 									#logger.debug("=========" + disk + disk_type + status + host_name + "==========")
-								if status == "bad" and ignore_bad:
+								if status != "good" and ignore_bad:
 									continue
 								mapping[host_name].update({disk_type : { "disk" : disk, "status" : status, "storage_server" : storage_server}})
 
@@ -887,7 +896,7 @@ class DiskMapper:
 		else:
 			f = open(self.mapping_file, 'w+')
 			
-		logger.debug("Updating mapping :" + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
+		logger.debug("Updating mapping :" + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + str(status))
 		file_content = f.read()
 		if file_content != "":
 			f.seek(0, 0)
