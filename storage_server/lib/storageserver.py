@@ -24,6 +24,11 @@ logger.setLevel(logging.DEBUG)
 class StorageServer:
 
     def __init__(self, environ, start_response):
+        if subprocess.call('ps ax | grep opentracke[r]', shell=True) != 0:
+            logger.error("Opentracker service is stopped.")
+            print("Opentracker service is stopped.")
+            exit(1)
+
         if environ != None:
             self.environ  = environ
             self.query_string  = environ["QUERY_STRING"]
