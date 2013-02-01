@@ -318,14 +318,14 @@ class DiskMapper:
 							continue
 
 						retries = 5
-		                                while retries > 0:
-                	                        	logger.info("Getting spare for " + host_name)
+						while retries > 0:
+							logger.info("Getting spare for " + host_name)
 							spare = self.initialize_host(host_name, type, game_id, False)
-        	                	                if spare == False:
-                	                	                logger.error("Failed to get spare for : " + host_name + " : " + type )
-                        	                	        time.sleep(5)
-	                        	                else:
-        	                        	                break
+							if spare == False:
+								logger.error("Failed to get spare for : " + host_name + " : " + type )
+								time.sleep(5)
+							else:
+								break
 						
 						if spare == False:
 							logger.error("Failed to swap, no spare found for " + storage_server + ":/" + disk + "/" + type)
@@ -357,30 +357,30 @@ class DiskMapper:
 
 		jobs = []
 		for storage_server in storage_servers:
-                        if storage_server in self.bad_servers:
+			if storage_server in self.bad_servers:
 				continue
 			jobs.append(threading.Thread(target=self.update_replica_file, args=(storage_server, "to_be_deleted")))
 
 		for j in jobs:
 			j.start()
 
-                for j in jobs:
-                        j.join()
+		for j in jobs:
+			j.join()
 
 	def check_copy_complete(self):
 		storage_servers = config['storage_server']
 
 		jobs = []
 		for storage_server in storage_servers:
-                        if storage_server in self.bad_servers:
-                                continue
+			if storage_server in self.bad_servers:
+				continue
 			jobs.append(threading.Thread(target=self.update_replica_file, args=(storage_server, "copy_complete")))
 
 		for j in jobs:
 			j.start()
 
-                for j in jobs:
-                        j.join()
+		for j in jobs:
+			j.join()
 
 	def update_replica_file(self, storage_server, type):
 		if type == "to_be_deleted":
@@ -441,8 +441,8 @@ class DiskMapper:
 
 		jobs = []
 		for storage_server in storage_servers:
-                        if storage_server in self.bad_servers:
-                                continue
+			if storage_server in self.bad_servers:
+				continue
 
 			dirty_file = self._get_dirty_file(storage_server)
 			to_be_promoted = self._get_to_be_promoted(storage_server)
@@ -473,7 +473,7 @@ class DiskMapper:
 
 			bad_disks = self._get_bad_disks(storage_server)
 			if bad_disks == False:
-                                logger.error("Failed to get dirty file from storage server: " + storage_server)
+				logger.error("Failed to get dirty file from storage server: " + storage_server)
 
 			files = dirty_file.split("\n")
 			sorted_files = self._uniq(files)
@@ -498,8 +498,8 @@ class DiskMapper:
 		for j in jobs:
 			j.start()
 
-                for j in jobs:
-                        j.join()
+		for j in jobs:
+			j.join()
 
 	def poll_dirty_file(self, storage_server,files, to_be_promoted):
 		for file in files:
@@ -563,8 +563,8 @@ class DiskMapper:
 		storage_servers = config['storage_server']
 
 		for storage_server in storage_servers:
-                        if storage_server in self.bad_servers:
-                                continue
+			if storage_server in self.bad_servers:
+				continue
 			self.update_server_config(storage_server)
 
 	def update_server_config(self, storage_server):
@@ -808,9 +808,9 @@ class DiskMapper:
 			try:
 				time.sleep(5)
 				conn = httplib.HTTPConnection(storage_server)
-                                conn.request("GET", url)
+				conn.request("GET", url)
 			except (httplib.HTTPResponse, socket.error) as error:
-                        	errno, errstr = error
+				errno, errstr = error
 				if errno == 111:
 					logger.error("Failed to connect to " + storage_server)
 			else:
