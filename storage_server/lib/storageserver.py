@@ -24,12 +24,13 @@ logger.setLevel(logging.DEBUG)
 class StorageServer:
 
     def __init__(self, environ, start_response):
-        if subprocess.call('ps ax | grep opentracke[r]', shell=True) != 0:
-            logger.error("Opentracker service is stopped.")
-            print("Opentracker service is stopped.")
-            exit(1)
-
+        
         if environ != None:
+            if subprocess.call('ps ax | grep opentracke[r]', shell=True) != 0:
+                logger.error("Opentracker service is stopped.")
+                print("Opentracker service is stopped.")
+                exit(1)
+
             self.environ  = environ
             self.query_string  = environ["QUERY_STRING"]
             self.start_response = start_response
@@ -308,6 +309,8 @@ class StorageServer:
                                 for host_name in os.listdir(type_path):
                                     if not os.path.exists(os.path.join(type_path, host_name, ".promoting")):
                                         mapping[disk].update({type : host_name})
+                                    else:
+                                        mapping[disk].update({type : "promoting"})
 
         self.status = '200 OK'
         self._start_response()

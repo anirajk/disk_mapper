@@ -212,8 +212,18 @@ class DiskMapper:
 		spare_server  = spare["storage_server"]
 		spare_disk  = spare["disk"]
 		spare_config = self._get_server_config(spare_server)
+		if spare_config == False:
+			logger.error("Failed to get server config for " + spare_server)
+
+		if type not in spare_config[spare_disk]:
+			logger.debug("Spare disk is no more a spare.")
+			self.update_server_config(spare_server)
+			logger.info("====" + str(self._get_spare(type, skip_storage_server)))
+			return False
+
 		if spare_config[spare_disk][type] != "spare":
 			logger.debug("Spare disk is no more a spare.")
+			self.update_server_config(spare_server)
 			return False
 
 		if self._initialize_host(spare_server, host_name, type, game_id, spare_disk, update_mapping) != False:
@@ -227,13 +237,17 @@ class DiskMapper:
 		storage_servers = config['storage_server']
 		jobs = []
 		for storage_server in storage_servers:
+			if storage_server in self.bad_servers:
+				continue
+
 			jobs.append(threading.Thread(target=self.poll_bad_file, args=(storage_server,)))
 
 		for j in jobs:
 			j.start()
 
-		while threading.activeCount() > 1:
-			pass
+		for j in jobs:
+			j.join()
+
 
 	def poll_bad_file(self, storage_server, swap_all_disk=False):
 		logger.debug ("Started poll_bad_file for " + storage_server + " with swap_all_disk = " + str(swap_all_disk))
@@ -283,9 +297,8 @@ class DiskMapper:
 							logger.error("Failed to get mapping for " + host_name)
 							continue
 
-						if type in mapping.keys():
+						if type in mapping.keys() and swap_all_disk == False:
 							continue
-
 
 						try:
 							cp_from_server = mapping[cp_from_type]["storage_server"]
@@ -304,7 +317,15 @@ class DiskMapper:
 							logger.error("Failed to get mapping for " + host_name)
 							continue
 
-						spare = self.initialize_host(host_name, type, game_id, False)
+						retries = 5
+		                                while retries > 0:
+                	                        	logger.info("Getting spare for " + host_name)
+							spare = self.initialize_host(host_name, type, game_id, False)
+        	                	                if spare == False:
+                	                	                logger.error("Failed to get spare for : " + host_name + " : " + type )
+                        	                	        time.sleep(5)
+	                        	                else:
+        	                        	                break
 						
 						if spare == False:
 							logger.error("Failed to swap, no spare found for " + storage_server + ":/" + disk + "/" + type)
@@ -327,6 +348,8 @@ class DiskMapper:
 							continue
 
 						self._update_mapping(storage_server, disk, type, host_name + "-bad", status)
+					elif swap_all_disk != False:
+						self._update_mapping(storage_server, disk, type, host_name + "-bad", status)
 
 
 	def delete_merged_files(self):
@@ -334,26 +357,30 @@ class DiskMapper:
 
 		jobs = []
 		for storage_server in storage_servers:
+                        if storage_server in self.bad_servers:
+				continue
 			jobs.append(threading.Thread(target=self.update_replica_file, args=(storage_server, "to_be_deleted")))
 
 		for j in jobs:
 			j.start()
 
-		while threading.activeCount() > 1:
-			pass
+                for j in jobs:
+                        j.join()
 
 	def check_copy_complete(self):
 		storage_servers = config['storage_server']
 
 		jobs = []
 		for storage_server in storage_servers:
+                        if storage_server in self.bad_servers:
+                                continue
 			jobs.append(threading.Thread(target=self.update_replica_file, args=(storage_server, "copy_complete")))
 
 		for j in jobs:
 			j.start()
 
-		while threading.activeCount() > 1:
-			pass
+                for j in jobs:
+                        j.join()
 
 	def update_replica_file(self, storage_server, type):
 		if type == "to_be_deleted":
@@ -414,6 +441,9 @@ class DiskMapper:
 
 		jobs = []
 		for storage_server in storage_servers:
+                        if storage_server in self.bad_servers:
+                                continue
+
 			dirty_file = self._get_dirty_file(storage_server)
 			to_be_promoted = self._get_to_be_promoted(storage_server)
 
@@ -468,8 +498,8 @@ class DiskMapper:
 		for j in jobs:
 			j.start()
 
-		while threading.activeCount() > 1:
-			pass
+                for j in jobs:
+                        j.join()
 
 	def poll_dirty_file(self, storage_server,files, to_be_promoted):
 		for file in files:
@@ -533,6 +563,8 @@ class DiskMapper:
 		storage_servers = config['storage_server']
 
 		for storage_server in storage_servers:
+                        if storage_server in self.bad_servers:
+                                continue
 			self.update_server_config(storage_server)
 
 	def update_server_config(self, storage_server):
@@ -759,6 +791,9 @@ class DiskMapper:
 			errno, errstr = error
 			if errno == 111:
 				self._check_server_conn(storage_server)
+			return False
+		except:
+			logger.error("Caught unknown error in _curl")
 			return False
 
 		if response.status != exp_return_code and exp_return_code != None:

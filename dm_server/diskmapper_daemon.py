@@ -38,7 +38,7 @@ try:
     is_daemon_stopped()
     dm = DiskMapper(None, None)
     logger.info("Initializing DiskMapper")
-    dm.initialize_diskmapper()
+    dm.initialize_diskmapper(True)
     logger.info(dm._get_mapping("host"))
     while True:
         if dm.is_dm_active() == True:
