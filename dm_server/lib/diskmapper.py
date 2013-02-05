@@ -319,6 +319,7 @@ class DiskMapper:
 
 						retries = 5
 						while retries > 0:
+							retries = retries - 1
 							logger.info("Getting spare for " + host_name)
 							spare = self.initialize_host(host_name, type, game_id, False)
 							if spare == False:
