@@ -927,19 +927,26 @@ class DiskMapper:
 		lockfd = open(self.mapping_lock, 'w')
 		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
 
-		if os.path.exists(self.mapping_file):
-			f = open(self.mapping_file, 'r+')
-		else:
-			f = open(self.mapping_file, 'w+')
-			
-		logger.debug("Updating mapping :" + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + str(status))
-		file_content = f.read()
-		if file_content != "":
-			f.seek(0, 0)
-			file_content = pickle.load(f)
-			#file_content[storage_server][disk][disk_type] = host_name
-		else:
+		def read_mapping(filename):
 			file_content = {}
+			if os.path.exists(filename):
+				f = open(filename)
+				try:
+					file_content = pickle.load(f)
+				except:
+					pass
+			f.close()
+			return file_content
+
+		def write_mapping(filename, data):
+			if os.path.exists(filename):
+				os.remove(filename)
+			f = open(filename, 'w')
+			pickle.dump(data, f)
+			f.close()
+
+		logger.debug("Updating mapping :" + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + str(status))
+		file_content = read_mapping(self.mapping_file)
 
 		#logger.debug("here with : " + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
 		#logger.debug("Mapping read from file : " + str(file_content))
@@ -954,16 +961,12 @@ class DiskMapper:
 		else:
 			file_content.update({storage_server : {disk : {disk_type : host_name, "status" : status}}})
 		#logger.debug("Mapping to be written to file : " + str(file_content))
-		f.seek(0, 0)
-		f.truncate()
-		pickle.dump(file_content,f)
-		f.seek(0, 0)
-		verify_content = pickle.load(f)
+		write_mapping(self.mapping_file, file_content)
+		verify_content = read_mapping(self.mapping_file)
 		#logger.debug("Updated content : " + str(verify_content))
 		if verify_content != file_content:
 			logger.error("Failed to update mapping for " + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
-		os.fsync(f)
-		f.close()
+
 		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
 		lockfd.close()
 		return True
