@@ -16,11 +16,11 @@ def main():
 		    if opt in ('-n'):
 				server_count = arg
 		    elif opt in ('-d'):
-		        disk_count = arg
+		        disk_count = int(arg)
 		    elif opt == '-s':
-		        spare_count = arg
+		        spare_count = int(arg)
 		    elif opt == '-p':
-		        host_prefix = arg
+		        host_prefix = int(arg)
 
 		
 		if server_count == 0:

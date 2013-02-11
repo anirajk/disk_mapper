@@ -114,10 +114,10 @@ class StorageServer:
             self._start_response()
             return "Invalid arguments."
 
-        if "type=dirty_files"  in self.query_string or "type=copy_completed" in self.query_string:
-            for partition_name in sorted(glob.glob('/var/www/html/membase_backup/data_*')):
-                file = partition_name + "/" + file_name
-                self._append_to_file(file, entry)
+        if "type=dirty_files"  in self.query_string in self.query_string:
+            partition_name = "/" + entry.split("/")[1] 
+            file = partition_name + "/" + file_name
+            self._append_to_file(file, entry)
         elif "type=bad_disk" in self.query_string:
             self._kill_torrent(entry)
             self._kill_merge(entry)
