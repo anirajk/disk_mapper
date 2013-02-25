@@ -935,7 +935,7 @@ class DiskMapper:
 					file_content = pickle.load(f)
 				except:
 					pass
-			f.close()
+				f.close()
 			return file_content
 
 		def write_mapping(filename, data):
