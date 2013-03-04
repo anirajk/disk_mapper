@@ -33,10 +33,10 @@ start(){
     #su - diskmapper -c "python /opt/disk_mapper/diskmapper_daemon.py > /dev/null 2>&1 &"
     #su -s /bin/sh apache -c "python /opt/disk_mapper/diskmapper_daemon.py > /dev/null 2>&1 &"
     echo -n "Starting Disk Mapper"
+    touch $LOCKFILE && chown apache $LOCKFILE && chmod 777 /var/run/
     daemon --pidfile=${PIDFILE} --user=apache 'python /opt/disk_mapper/diskmapper_daemon.py > /dev/null 2>&1 & '
     pid=$(ps ax | grep 'python /opt/disk_mapper/diskmapper_daemon.py' | grep -v grep | awk '{print $1}')
     echo $pid > $PIDFILE
-    touch $LOCKFILE && chown apache $LOCKFILE && chmod 777 /var/run/
     echo
 }
 
