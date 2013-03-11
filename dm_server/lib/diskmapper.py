@@ -596,13 +596,14 @@ class DiskMapper:
 	def is_dm_active(self):
 		zrt = config["zruntime"]
 		url = os.path.join ('https://api.runtime.zynga.com:8994/', zrt["gameid"], zrt["env"], "current")
-		retries = 10
+		retries = 20
 		while retries > 0:
 			retries = retries - 1
 			value = self._curl(url, 200, True)
 			if value != False:
 				break
 			logger.error("Retrying zruntime connection...")
+			time.sleep(3)
 
 		else:
 			if value == False:
