@@ -1,5 +1,5 @@
 %define pkg_version 1.0.0
-%define branch_version 0.21
+%define branch_version 0.22
 %define _unpackaged_files_terminate_build 0
 
 Summary:       Setup storage server
@@ -73,7 +73,7 @@ pear install XML_RPC2
 
 
 
-ip=$(ifconfig eth0 | grep -w inet | awk '{print $2}' | sed "s/.*://") ; sed -i "s/@@TRACKER_IP_HERE@@/$ip/" /etc/opentracker/opentracker.conf
+ip=$(ifconfig bond0 | grep -w inet | awk '{print $2}' | sed "s/.*://") ; sed -i "s/@@TRACKER_IP_HERE@@/$ip/" /etc/opentracker/opentracker.conf
 /etc/init.d/opentracker start
 
 cd /tmp/
