@@ -87,6 +87,7 @@ chown -R apache /var/www/html
 
 %postun
 kill -9 $(ps ax | grep diskmapper_daemon.py | grep -v grep | awk '{print $1}')
+rm -rf /etc/httpd/conf.d/disk_mapper.conf
 
 %changelog
 

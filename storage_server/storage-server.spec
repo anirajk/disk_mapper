@@ -111,6 +111,7 @@ sed -i -e "s/User apache/User storageserver/" -e "s/Group apache/Group storagese
 %preun
 
 %postun
+rm -rf /etc/httpd/conf.d/membase_backup.conf
 
 
 
