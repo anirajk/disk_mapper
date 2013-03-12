@@ -354,15 +354,38 @@ class StorageServer:
                                                 mapping[disk].update({type : host_name})
                                             else:
                                                 mapping[disk].update({type : "promoting"})
+
+                        for type in disk_types:
+                            if type == "primary" or type == "secondary":
+                                type_path = os.path.join(disk_path, type)
+                                if os.path.isdir(type_path):
+
+                                    if os.listdir(type_path) == []:
+                                        mapping[disk].update({type : "spare"})
+                                    else:
+                                        for host_name in os.listdir(type_path):
+                                            if host_name.startswith("."):
+                                                continue
+                                            host_name_path = os.path.join(type_path, host_name)
+                                            if not os.path.exists(os.path.join(host_name_path, ".promoting")):
+                                                vbuckets = ""
+                                                for file in os.listdir(host_name_path):
+                                                    if "vb_" in file and os.path.isdir(os.path.join(host_name_path, file)):
+                                                        vbuckets = vbuckets + "," + file
+                                                if vbuckets != "":
+                                                    mapping[disk][type + "_vbs"] = vbuckets
+                                                mapping[disk].update({type : host_name})
+                                            else:
+                                                mapping[disk].update({type : "promoting"})
                         errmsg = None
                         break
                     except Exception, e:
                         errmsg = str(e)
 
-                    if errmsg:
-                        logger.error("BAD_DISK: Unable to list disk types for %s (%s)" %(disk_path, str(e)))
-                        self._append_to_file(BAD_DISK_FILE, disk)
-                        continue
+                if errmsg:
+                    logger.error("BAD_DISK: Unable to list disk types for %s (%s)" %(disk_path, str(e)))
+                    self._append_to_file(BAD_DISK_FILE, disk)
+                    continue
 
         self.status = '200 OK'
         self._start_response()
