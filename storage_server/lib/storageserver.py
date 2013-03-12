@@ -371,7 +371,10 @@ class StorageServer:
                                                 vbuckets = ""
                                                 for file in os.listdir(host_name_path):
                                                     if "vb_" in file and os.path.isdir(os.path.join(host_name_path, file)):
-                                                        vbuckets = vbuckets + "," + file
+                                                        if vbuckets = "":
+                                                            vbuckets = file
+                                                        else:
+                                                            vbuckets = vbuckets + "," + file
                                                 if vbuckets != "":
                                                     mapping[disk][type + "_vbs"] = vbuckets
                                                 mapping[disk].update({type : host_name})
