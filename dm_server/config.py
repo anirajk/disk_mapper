@@ -13,6 +13,7 @@ config = {
                'gameid' : 'membase',
                'env' : 'auto',
                'mcs_key_name' : 'ACTIVE_MCS',
+               'retries' : 60,
               },
     'params':
             {'poll_interval' : 5,
