@@ -582,8 +582,13 @@ class DiskMapper:
 			else:
 				status = "good"
 			for type in sorted(server_config[disk]):
-				host_name = server_config[disk][type]
-				self._update_mapping(storage_server, disk, type, host_name, status)
+				if type == "primary" or type == "secondary":
+					host_name = server_config[disk][type]
+					vbuckets = None
+					if type+"_vbs" in server_config[disk].keys():
+						vbuckets = server_config[disk][type+"_vbs"]
+					host_name = server_config[disk][type]
+					self._update_mapping(storage_server, disk, type, host_name, status, vbuckets)
 					
 
 	def is_dm_active(self):
@@ -719,7 +724,7 @@ class DiskMapper:
 			logger.info("Initialized " + host_name + "at " + storage_server + ":/" + disk + "/" + type)
 			if update_mapping == True:
 				logger.info("Updating mapping.")
-				self._update_mapping(storage_server, disk, type, host_name)
+				self._update_mapping(storage_server, disk, type, host_name, "good")
 			return True
 		logger.error("Failed to initialize " + host_name + " at " + storage_server + ":/" + disk + "/" + type)
 		return False
@@ -873,6 +878,39 @@ class DiskMapper:
 			return {"disk" : spare_disk, "storage_server" : server_with_most_spare }
 		return spare_mapping
 
+	def _get_vbucket_mapping(self):
+
+
+		if not self._is_diskmapper_initialized():
+			return False
+
+		lockfd = open(self.mapping_lock, 'w')
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+		f = open(self.mapping_file, 'r')
+		file_content = pickle.load(f)
+
+		#logger.debug("Mapping in file : " + str(file_content))
+		mapping = {}
+		for storage_server in sorted(file_content):
+			for disk in sorted(file_content[storage_server]):
+				for disk_type in sorted(file_content[storage_server][disk]):
+					if disk_type == "primary_vbs" or disk_type == "secondary_vbs":
+						vbuckets = file_content[storage_server][disk][disk_type]
+						status = file_content[storage_server][disk]["status"]
+						for vbucket in vbuckets.split(","):
+							if vbuckets not in mapping.keys():
+								mapping[vbucket] = {}
+							if status != "good":
+								continue
+							mapping[vbucket].update({disk_type : { "disk" : disk, "status" : status, "storage_server" : storage_server}})
+
+
+		f.close()
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
+		lockfd.close()
+
+		return mapping
+
 	def _get_mapping(self, type, key=None, ignore_bad=True):
 
 		logger.debug("Get mapping for, type : " + type + " key : " + str(key) + " ignore_bad : " + str(ignore_bad))
@@ -918,7 +956,7 @@ class DiskMapper:
 	def _start_response(self):
 		self.start_response(self.status, self.response_headers)
 
-	def _update_mapping(self, storage_server, disk, disk_type, host_name, status="good"):
+	def _update_mapping(self, storage_server, disk, disk_type, host_name, status="good", vbuckets=None):
 		lockfd = acquire_lock(self.mapping_lock)
 
 		def read_mapping(filename):
@@ -954,6 +992,8 @@ class DiskMapper:
 				file_content[storage_server].update({disk : {disk_type : host_name, "status" : status}})
 		else:
 			file_content.update({storage_server : {disk : {disk_type : host_name, "status" : status}}})
+		if vbuckets != None:
+			file_content[storage_server][disk][type+"_vbs"] = vbuckets
 		#logger.debug("Mapping to be written to file : " + str(file_content))
 		write_mapping(self.mapping_file, file_content)
 		verify_content = read_mapping(self.mapping_file)
