@@ -307,6 +307,8 @@ class StorageServer:
                                 mapping[disk].update({type : "spare"})
                             else:
                                 for host_name in os.listdir(type_path):
+                                    if host_name.startswith("."):
+                                        continue
                                     if not os.path.exists(os.path.join(type_path, host_name, ".promoting")):
                                         mapping[disk].update({type : host_name})
                                     else:
