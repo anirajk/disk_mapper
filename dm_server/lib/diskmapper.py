@@ -105,6 +105,52 @@ class DiskMapper:
 		self._start_response()
 		return str(url)
 
+	def get_vbuckets(self, type=None):
+
+		mapping = self._get_vbucket_mapping()
+			
+		if mapping == False:
+			logger.error("Failed to get vbucket mapping.)
+			self.status = '404 Not Found'
+			self._start_response()
+			return "Failed to get vbucket mapping."
+			
+		#mapping[vbucket].update({disk_type : { "disk" : disk, "vb_group" : vb_group, "status" : status, "storage_server" : storage_server}})
+
+		status = None
+		for vbucket in mapping:
+			if "primary_vbs" in mapping[vbucket]:
+				logger.info("Found primary for " + vbucket)
+				storage_server = mapping[vbucket]["primary_vbs"]["storage_server"]
+				vb_group = mapping[vbucket]["primary_vbs"]["vb_group"]
+				disk = mapping[vbucket]["primary_vbs"]["disk"]
+				status = mapping[vbucket]["primary_vbs"]["status"]
+				type = "primary"
+				#logger.debug("Primary mapping : " + str(mapping["primary"]))
+
+			if status == "bad" or status == None or status == "unprocessed_state":
+				logger.info("Primary disk is not available or is bad.")
+				if "secondary_vbs" in mapping[vbucket]:
+					logger.info("Found secondary for " + vbucket)
+					storage_server = mapping[vbucket]["primary_vbs"]["storage_server"]
+					vb_group = mapping[vbucket]["primary_vbs"]["vb_group"]
+					disk = mapping[vbucket]["primary_vbs"]["disk"]
+					status = mapping[vbucket]["primary_vbs"]["status"]
+					type = "secondary"
+
+					if status == "bad" or status == None or status == "unprocessed_state":
+						logger.error("Both primary and secondary are bad disks.")
+						continue
+			vbucket_mapping = {}
+			if type == "vbucket":
+				vbucket_mapping[vbucket].update({"storage_server" : storage_server, "disk" : disk, "vb_group" : vb_group, "type" : type})
+			else:
+				vbucket_mapping[storage_server].update({"vbucket" : vbucket, "disk" : disk, "vb_group" : vb_group, "type" : type})
+
+			
+		self._start_response()
+		return json.dumps(vbucket_mapping)
+
 	def get_all_config(self):
 		self.status = '202 Accepted'
 		mapping = self._get_mapping ("host")
@@ -895,14 +941,19 @@ class DiskMapper:
 			for disk in sorted(file_content[storage_server]):
 				for disk_type in sorted(file_content[storage_server][disk]):
 					if disk_type == "primary_vbs" or disk_type == "secondary_vbs":
+						if disk_type == "primary_vbs":
+							vb_group_type = "primary"
+						else:
+							vb_group_type = "primary"
 						vbuckets = file_content[storage_server][disk][disk_type]
+						vb_group = file_content[storage_server][disk][vb_group_type]
 						status = file_content[storage_server][disk]["status"]
 						for vbucket in vbuckets.split(","):
 							if vbuckets not in mapping.keys():
 								mapping[vbucket] = {}
 							if status != "good":
 								continue
-							mapping[vbucket].update({disk_type : { "disk" : disk, "status" : status, "storage_server" : storage_server}})
+							mapping[vbucket].update({disk_type : { "disk" : disk, "vb_group" : vb_group, "status" : status, "storage_server" : storage_server}})
 
 
 		f.close()

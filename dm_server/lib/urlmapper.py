@@ -26,6 +26,10 @@ def index(environ, start_response):
             return dm.get_host_config()
         elif "get_all_config" in action:
             return dm.get_all_config()
+        elif "get_vb_mapping" in action:
+            return dm.get_vbuckets("vbucket")
+        elif "get_ss_mapping" in action:
+            return dm.get_vbuckets()
 
     return dm.forward_request()
 
