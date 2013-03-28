@@ -1,5 +1,5 @@
-%define pkg_version 1.0.0
-%define branch_version 0.22
+%define pkg_version 1.0
+%define branch_version 0
 %define _unpackaged_files_terminate_build 0
 
 Summary:       Disk Mapper
