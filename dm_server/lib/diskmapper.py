@@ -234,7 +234,7 @@ class DiskMapper:
 
 	def swap_bad_disk(self, storage_servers=None):
 		lockfd = open(self.host_init_lock, 'w')
-		fcntl.flock(lockfd.fileno(), fcntl.lock_ex)
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
 
 		storage_servers = config['storage_server']
 		jobs = []
