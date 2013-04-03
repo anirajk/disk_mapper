@@ -146,8 +146,9 @@ class DiskMapper:
 		request_uri = self.environ["REQUEST_URI"]
 		logger.debug("Upload request : " + path)
 
-		while not self._is_diskmapper_initialized():
+		if not self._is_diskmapper_initialized():
 			logger.info("Disk Mapper is not initialized.")
+			self.initialize_diskmapper()
 
 		host_name =  path.split("/")[5]
 		game_id =  path.split("/")[4]
