@@ -232,6 +232,9 @@ class DiskMapper:
 		return False
 
 	def swap_bad_disk(self, storage_servers=None):
+		lockfd = open(self.host_init_lock, 'w')
+		fcntl.flock(lockfd.fileno(), fcntl.lock_ex)
+
 		storage_servers = config['storage_server']
 		jobs = []
 		for storage_server in storage_servers:
@@ -245,6 +248,9 @@ class DiskMapper:
 
 		for j in jobs:
 			j.join()
+
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
+		lockfd.close()
 
 
 	def poll_bad_file(self, storage_server, swap_all_disk=False):
