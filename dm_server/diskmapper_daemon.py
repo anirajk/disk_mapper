@@ -38,7 +38,7 @@ try:
     is_daemon_stopped()
     dm = DiskMapper(None, None)
     logger.info("Initializing DiskMapper")
-    dm.initialize_diskmapper(True)
+    dm.initialize_diskmapper()
     logger.info(dm._get_mapping("host"))
     while True:
         if dm.is_dm_active() == True:
@@ -58,7 +58,7 @@ try:
             
         logger.info("Polling storage server for config.")
         is_daemon_stopped()
-        dm.initialize_diskmapper(True)
+        dm.initialize_diskmapper()
         logger.debug(dm._get_mapping("storage_server"))
         logger.debug("===")
         logger.debug(dm._get_mapping("host"))

@@ -141,15 +141,13 @@ class DiskMapper:
 		return json.dumps(host_config)
 
 	def upload(self):
-		
 		self.status = '202 Accepted'
 		path = self.environ["PATH_TRANSLATED"]
 		request_uri = self.environ["REQUEST_URI"]
 		logger.debug("Upload request : " + path)
 
-		if not self._is_diskmapper_initialized():
+		while not self._is_diskmapper_initialized():
 			logger.info("Disk Mapper is not initialized.")
-			self.initialize_diskmapper()
 
 		host_name =  path.split("/")[5]
 		game_id =  path.split("/")[4]
@@ -558,15 +556,19 @@ class DiskMapper:
 		return True
 
 
-	def initialize_diskmapper(self, poll=False):
-		if os.path.exists(self.mapping_file) and poll == False:
-			os.remove(self.mapping_file)
+	def initialize_diskmapper(self):
+		lockfd = open(self.host_init_lock, 'w')
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+
 		storage_servers = config['storage_server']
 
 		for storage_server in storage_servers:
 			if storage_server in self.bad_servers:
 				continue
 			self.update_server_config(storage_server)
+
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
+		lockfd.close()
 
 	def update_server_config(self, storage_server):
 		server_config = self._get_server_config(storage_server)
@@ -823,9 +825,16 @@ class DiskMapper:
 			self.poll_bad_file(storage_server, True)
 
 	def _is_diskmapper_initialized(self):
+		lockfd = open(self.mapping_lock, 'w')
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+		ret = True
 		if not os.path.exists(self.mapping_file):
-			return False
-		return True
+			ret =  False
+
+		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
+		lockfd.close()
+
+		return ret
 
 	def _is_host_initialized(self, host_name):
 		if self._get_mapping ("host", host_name, False) == False:
