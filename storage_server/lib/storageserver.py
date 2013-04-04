@@ -635,7 +635,8 @@ class StorageServer:
             dirty_file = os.path.join("/", disk, "dirty")
             to_be_deleted_file = os.path.join("/", disk, "to_be_deleted")
             self._remove_line_from_file(dirty_file, actual_path, True)
-            self._append_to_file(to_be_deleted_file, actual_path)
+            if os.path.exists(actual_path):
+                self._append_to_file(to_be_deleted_file, actual_path)
 
         if self._delete_file_folder(path):
             d = os.path.dirname(path)
