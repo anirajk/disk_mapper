@@ -30,7 +30,7 @@ def index(environ, start_response):
             key = None
             if "vbucket" in query_string:
                 key = query_string["vbucket"][0]
-            return dm.get_vbuckets("vbucket")
+            return dm.get_vbuckets("vbucket", key)
         elif "get_ss_mapping" in action:
             key = None
             if "storage_server" in query_string:
