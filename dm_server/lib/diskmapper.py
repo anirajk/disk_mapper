@@ -35,6 +35,16 @@ if "params" in config.keys() and "log_level" in config["params"].keys():
 	elif log_level == "debug":
 		logger.setLevel(logging.DEBUG)
 
+def acquire_lock(lock_file):
+    lockfd = open(lock_file, 'w')
+    fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+    return lockfd
+
+def release_lock(fd):
+    fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
+    fd.close()
+
+
 class DiskMapper:
 
 	def __init__(self, environ, start_response):
@@ -153,8 +163,7 @@ class DiskMapper:
 		host_name =  path.split("/")[5]
 		game_id =  path.split("/")[4]
 
-		lockfd = open(self.host_init_lock, 'w')
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+		lockfd = acquire_lock(self.host_init_lock)
 		if not self._is_host_initialized(host_name):
 			logger.info("Host : " + host_name + " is not initialized.")
 
@@ -181,8 +190,7 @@ class DiskMapper:
 					else:
 						break
 
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-		lockfd.close()
+		release_lock(lockfd)
 		return self.forward_request()
 
 	def initialize_host(self, host_name, type, game_id, update_mapping=True):
@@ -233,8 +241,7 @@ class DiskMapper:
 		return False
 
 	def swap_bad_disk(self, storage_servers=None):
-		lockfd = open(self.host_init_lock, 'w')
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+		lockfd = acquire_lock(self.host_init_lock)
 
 		storage_servers = config['storage_server']
 		jobs = []
@@ -250,9 +257,7 @@ class DiskMapper:
 		for j in jobs:
 			j.join()
 
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-		lockfd.close()
-
+		release_lock(lockfd)
 
 	def poll_bad_file(self, storage_server, swap_all_disk=False):
 		logger.debug ("Started poll_bad_file for " + storage_server + " with swap_all_disk = " + str(swap_all_disk))
@@ -564,9 +569,7 @@ class DiskMapper:
 
 
 	def initialize_diskmapper(self):
-		lockfd = open(self.host_init_lock, 'w')
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
-
+		lockfd = acquire_lock(self.host_init_lock)
 		storage_servers = config['storage_server']
 
 		for storage_server in storage_servers:
@@ -574,8 +577,7 @@ class DiskMapper:
 				continue
 			self.update_server_config(storage_server)
 
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-		lockfd.close()
+		release_lock(lockfd)
 
 	def update_server_config(self, storage_server):
 		server_config = self._get_server_config(storage_server)
@@ -832,15 +834,12 @@ class DiskMapper:
 			self.poll_bad_file(storage_server, True)
 
 	def _is_diskmapper_initialized(self):
-		lockfd = open(self.mapping_lock, 'w')
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+		lockfd = acquire_lock(self.mapping_lock)
 		ret = True
 		if not os.path.exists(self.mapping_file):
 			ret =  False
 
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-		lockfd.close()
-
+		release_lock(lockfd)
 		return ret
 
 	def _is_host_initialized(self, host_name):
@@ -899,8 +898,7 @@ class DiskMapper:
 		if not self._is_diskmapper_initialized():
 			return False
 
-		lockfd = open(self.mapping_lock, 'w')
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+		lockfd = acquire_lock(self.mapping_lock)
 		f = open(self.mapping_file, 'r')
 		file_content = pickle.load(f)
 
@@ -925,8 +923,7 @@ class DiskMapper:
 			mapping = file_content
 
 		f.close()
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-		lockfd.close()
+		release_lock(lockfd)
 
 		if key == None:
 			return mapping
@@ -940,9 +937,7 @@ class DiskMapper:
 		self.start_response(self.status, self.response_headers)
 
 	def _update_mapping(self, storage_server, disk, disk_type, host_name, status="good"):
-
-		lockfd = open(self.mapping_lock, 'w')
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+		lockfd = acquire_lock(self.mapping_lock)
 
 		def read_mapping(filename):
 			file_content = {}
@@ -984,8 +979,7 @@ class DiskMapper:
 		if verify_content != file_content:
 			logger.error("Failed to update mapping for " + storage_server + " " + disk + " " + disk_type + " " + host_name + " " + status)
 
-		fcntl.flock(lockfd.fileno(), fcntl.LOCK_UN)
-		lockfd.close()
+		release_lock(lockfd)
 		return True
 
 	def _uniq(self, input):

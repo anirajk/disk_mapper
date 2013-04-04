@@ -21,6 +21,15 @@ logger.addHandler(hdlr)
 logger.setLevel(logging.DEBUG)
 
 
+def acquire_lock(lock_file):
+    lockfd = open(lock_file, 'w')
+    fcntl.flock(lockfd.fileno(), fcntl.LOCK_EX)
+    return lockfd
+
+def release_lock(fd):
+    fcntl.flock(fd.fileno(), fcntl.LOCK_UN)
+    fd.close()
+
 class StorageServer:
 
     def __init__(self, environ, start_response):
@@ -175,8 +184,7 @@ class StorageServer:
         if not os.path.exists(file):
             return True
     
-        lock = open("%s.lock" %file, 'w')
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        lockfd = acquire_lock("%s.lock" %file)
 
         f = open(file, 'r+')
         file_content = f.readlines()
@@ -187,8 +195,7 @@ class StorageServer:
                 f.write(line)
         os.fsync(f)
         f.close()
-        fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
-        lock.close()
+        release_lock(lockfd)
 
 
     def get_file(self):
@@ -538,8 +545,7 @@ class StorageServer:
         return ["Saved file to disk"]
 
     def _append_to_file(self, file, line):
-        lock = open("%s.lock" %file, 'w')
-        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        lockfd = acquire_lock("%s.lock" %file)
         
         if os.path.exists(file):
             f = open(file, 'r')
@@ -554,9 +560,7 @@ class StorageServer:
         f.write(line + "\n")
         os.fsync(f)
         f.close()    
-        
-        fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
-        lock.close()
+        release_lock(lockfd)
 
     def delete_merged_file(self):
         self.status = '202 Accepted'
