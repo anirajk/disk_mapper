@@ -2,11 +2,15 @@
 
 function parseArgs() {
   # Setup your arguments here.
-  while getopts 'i:n:h' OPTION; do
+  while getopts 'v:t:i:g:h' OPTION; do
     case $OPTION in
       v) VBS_PER_DISK=$OPTARG
          ;;
       t) TOTAL_VBS=$OPTARG
+         ;;
+      i) DISK_MAPPER_IP=$OPTARG
+         ;;
+      g) GAME_ID=$OPTARG
          ;;
       h) usage
          exit 0
@@ -18,7 +22,7 @@ function parseArgs() {
     esac
   done
 
-  if [[ -z $VBS_PER_DISK || -z $TOTAL_VBS ]]; then
+  if [[ -z $VBS_PER_DISK || -z $TOTAL_VBS || -z $DISK_MAPPER_IP || -z $GAME_ID ]]; then
     usage
     exit 1
   fi
@@ -30,27 +34,33 @@ function usage() {
   Usage: ${0##*/} OPTIONS
 
   OPTIONS:
+    -i  Disk Mapper IP.
+    -g  Game ID.
     -v  Number of vbuckets per disk on the storage server.
-    -t  Total number of vbuckets in the entire pool
+    -t  Total number of vbuckets in the entire pool.
     -h  Show this message.
 EOF
 }
 
 function main() {
   parseArgs $@
-  disk_count=0
   vb_id=0
+  vb_group_id=0
   vb_group_count=$(($TOTAL_VBS / $VBS_PER_DISK))
-  touch /tmp/dm_init_emp_file
+  echo valid > /tmp/dm_init_emp_file
 
-  for i in `seq 0 $TOTAL_VBS` ; do 
-    for j in `
+  while [ $vb_group_id -lt $vb_group_count ] ; do
 
-
-
+    actual_url=$(curl -sf --connect-timeout 15 --max-time 120 --request POST http://$DISK_MAPPER_IP/api/$GAME_ID/vb_group_$vb_group_id/)
+    i=0
+    while [ $i -lt $VBS_PER_DISK ] ; do
+      
+      curl -sf -L --connect-timeout 15 --max-time 600 --request POST --data-binary @/tmp/dm_init_emp_file $actual_url/vb_$vb_id/valid
+      let vb_id=vb_id+1
+      let i=i+1
+    done
+    let vb_group_id=vb_group_id+1
   done
-  curl -sf --connect-timeout 15 --max-time 120 --request POST http://10.36.193.156/api/test_game/vb_group2/vb_2/.valid
-  curl -sf -L --connect-timeout 15 --max-time 600 --request POST --data-binary @/tmp/dm_init_emp_file http://10.36.173.144/api/test_game/vb_group2/vb_2/.valid
 
 }
 

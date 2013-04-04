@@ -132,10 +132,10 @@ class DiskMapper:
 				logger.info("Primary disk is not available or is bad.")
 				if "secondary_vbs" in mapping[vbucket]:
 					logger.info("Found secondary for " + vbucket)
-					storage_server = mapping[vbucket]["primary_vbs"]["storage_server"]
-					vb_group = mapping[vbucket]["primary_vbs"]["vb_group"]
-					disk = mapping[vbucket]["primary_vbs"]["disk"]
-					status = mapping[vbucket]["primary_vbs"]["status"]
+					storage_server = mapping[vbucket]["secondary_vbs"]["storage_server"]
+					vb_group = mapping[vbucket]["secondary_vbs"]["vb_group"]
+					disk = mapping[vbucket]["secondary_vbs"]["disk"]
+					status = mapping[vbucket]["secondary_vbs"]["status"]
 					type = "secondary"
 
 					if status == "bad" or status == None or status == "unprocessed_state":

@@ -350,22 +350,6 @@ class StorageServer:
                                         for host_name in os.listdir(type_path):
                                             if host_name.startswith("."):
                                                 continue
-                                            if not os.path.exists(os.path.join(type_path, host_name, ".promoting")):
-                                                mapping[disk].update({type : host_name})
-                                            else:
-                                                mapping[disk].update({type : "promoting"})
-
-                        for type in disk_types:
-                            if type == "primary" or type == "secondary":
-                                type_path = os.path.join(disk_path, type)
-                                if os.path.isdir(type_path):
-
-                                    if os.listdir(type_path) == []:
-                                        mapping[disk].update({type : "spare"})
-                                    else:
-                                        for host_name in os.listdir(type_path):
-                                            if host_name.startswith("."):
-                                                continue
                                             host_name_path = os.path.join(type_path, host_name)
                                             if not os.path.exists(os.path.join(host_name_path, ".promoting")):
                                                 vbuckets = ""
@@ -390,35 +374,6 @@ class StorageServer:
                     self._append_to_file(BAD_DISK_FILE, disk)
                     continue
 
-<<<<<<< HEAD
-=======
-                for type in disk_types:
-                    if type == "primary" or type == "secondary":
-                        type_path = os.path.join(disk_path, type)
-                        if os.path.isdir(type_path):
-
-                            if os.listdir(type_path) == []:
-                                mapping[disk].update({type : "spare"})
-                            else:
-                                for host_name in os.listdir(type_path):
-                                    if host_name.startswith("."):
-                                        continue
-                                    host_name_path = os.path.join(type_path, host_name)
-                                    if not os.path.exists(os.path.join(host_name_path, ".promoting")):
-                                        vbuckets = ""
-                                        for file in os.listdir(host_name_path):
-                                            if "vb_" in file and os.path.isdir(os.path.join(host_name_path, file)):
-                                                if vbuckets == "":
-                                                    vbuckets = file
-                                                else:
-                                                    vbuckets = vbuckets + "," + file
-                                        if vbuckets != "":
-                                            mapping[disk][type + "_vbs"] = vbuckets
-                                        mapping[disk].update({type : host_name})
-                                    else:
-                                        mapping[disk].update({type : "promoting"})
-
->>>>>>> Fixing typo.
         self.status = '200 OK'
         self._start_response()
         return json.dumps(mapping)
