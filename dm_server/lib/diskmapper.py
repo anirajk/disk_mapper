@@ -105,7 +105,7 @@ class DiskMapper:
 		self._start_response()
 		return str(url)
 
-	def get_vbuckets(self, type=None):
+	def get_vbuckets(self, type=None, key=None):
 
 		mapping = self._get_vbucket_mapping()
 			
@@ -144,12 +144,15 @@ class DiskMapper:
 			vbucket_mapping = {}
 			if type == "vbucket":
 				vbucket_mapping[vbucket].update({"storage_server" : storage_server, "disk" : disk, "vb_group" : vb_group, "type" : type})
-			else:
-				vbucket_mapping[storage_server].update({"vbucket" : vbucket, "disk" : disk, "vb_group" : vb_group, "type" : type})
+			elif type == "storage_server":
+				vbucket_mapping[storage_server].update({ vbucket : {"path_name" : os.path.join("/",disk,type,vb_group,vbucket) , "disk" : disk, "vb_group" : vb_group, "type" : type}})
 
 			
 		self._start_response()
-		return json.dumps(vbucket_mapping)
+		if key != None:
+			return json.dumps(vbucket_mapping[key])
+		else:
+			return json.dumps(vbucket_mapping)
 
 	def get_all_config(self):
 		self.status = '202 Accepted'

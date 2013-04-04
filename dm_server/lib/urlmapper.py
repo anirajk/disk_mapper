@@ -27,9 +27,15 @@ def index(environ, start_response):
         elif "get_all_config" in action:
             return dm.get_all_config()
         elif "get_vb_mapping" in action:
+            key = None
+            if "vbucket" in query_string:
+                key = query_string["vbucket"]
             return dm.get_vbuckets("vbucket")
         elif "get_ss_mapping" in action:
-            return dm.get_vbuckets()
+            key = None
+            if "storage_server" in query_string:
+                key = query_string["storage_server"]
+            return dm.get_vbuckets("storage_server", key)
 
     return dm.forward_request()
 
