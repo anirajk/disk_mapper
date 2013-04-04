@@ -19,6 +19,7 @@ formatter = logging.Formatter('%(asctime)s %(process)d %(thread)d %(filename)s %
 hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.DEBUG)
+DELETE_LEVEL = 5
 
 
 def acquire_lock(lock_file):
@@ -583,7 +584,7 @@ class StorageServer:
             self._start_response()
             return ["File not found."]
 
-        if ".promoting" not in file_name and len(file_name.split("/")) < 5:
+        if ".promoting" not in file_name and len(file_name.split("/")) < DELETE_LEVEL:
             self.status = '400 Bad Request'
             self._start_response()
             return "Invalid arguments."
