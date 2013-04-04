@@ -29,12 +29,12 @@ def index(environ, start_response):
         elif "get_vb_mapping" in action:
             key = None
             if "vbucket" in query_string:
-                key = query_string["vbucket"]
+                key = query_string["vbucket"][0]
             return dm.get_vbuckets("vbucket")
         elif "get_ss_mapping" in action:
             key = None
             if "storage_server" in query_string:
-                key = query_string["storage_server"]
+                key = query_string["storage_server"][0]
             return dm.get_vbuckets("storage_server", key)
 
     return dm.forward_request()

@@ -1,7 +1,7 @@
 #!/bin/bash
 
-dm_server="netops-demo-mb-210.va2.zynga.com"
-ss_server="netops-demo-mb-211.va2.zynga.com,netops-demo-mb-212.va2.zynga.com,netops-demo-mb-213.va2.zynga.com"
+dm_server="netops-demo-mb-221.va2.zynga.com"
+ss_server="netops-demo-mb-325.va2.zynga.com,netops-demo-mb-276.va2.zynga.com,netops-demo-mb-334.va2.zynga.com"
 #dm_server="10.36.172.154"
 #ss_server="10.36.161.172,10.36.160.34,10.36.162.35"
 

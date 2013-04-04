@@ -105,12 +105,12 @@ class DiskMapper:
 		self._start_response()
 		return str(url)
 
-	def get_vbuckets(self, type=None, key=None):
+	def get_vbuckets(self, api_type=None, key=None):
 
 		mapping = self._get_vbucket_mapping()
 			
 		if mapping == False:
-			logger.error("Failed to get vbucket mapping.)
+			logger.error("Failed to get vbucket mapping.")
 			self.status = '404 Not Found'
 			self._start_response()
 			return "Failed to get vbucket mapping."
@@ -118,6 +118,7 @@ class DiskMapper:
 		#mapping[vbucket].update({disk_type : { "disk" : disk, "vb_group" : vb_group, "status" : status, "storage_server" : storage_server}})
 
 		status = None
+		vbucket_mapping = {}
 		for vbucket in mapping:
 			if "primary_vbs" in mapping[vbucket]:
 				logger.info("Found primary for " + vbucket)
@@ -126,7 +127,6 @@ class DiskMapper:
 				disk = mapping[vbucket]["primary_vbs"]["disk"]
 				status = mapping[vbucket]["primary_vbs"]["status"]
 				type = "primary"
-				#logger.debug("Primary mapping : " + str(mapping["primary"]))
 
 			if status == "bad" or status == None or status == "unprocessed_state":
 				logger.info("Primary disk is not available or is bad.")
@@ -141,14 +141,20 @@ class DiskMapper:
 					if status == "bad" or status == None or status == "unprocessed_state":
 						logger.error("Both primary and secondary are bad disks.")
 						continue
-			vbucket_mapping = {}
-			if type == "vbucket":
+			#logger.info("Primary mapping : " + str(mapping[vbucket]))
+			if api_type == "vbucket":
+				if vbucket not in vbucket_mapping:
+					vbucket_mapping[vbucket] = {}
 				vbucket_mapping[vbucket].update({"storage_server" : storage_server, "disk" : disk, "vb_group" : vb_group, "type" : type})
-			elif type == "storage_server":
+				logger.info("Primary mapping : " + str(vbucket_mapping))
+			elif api_type == "storage_server":
+				if storage_server not in vbucket_mapping:
+					vbucket_mapping[storage_server] = {}
 				vbucket_mapping[storage_server].update({ vbucket : {"path_name" : os.path.join("/",disk,type,vb_group,vbucket) , "disk" : disk, "vb_group" : vb_group, "type" : type}})
-
 			
 		self._start_response()
+		logger.info(str(vbucket_mapping))
+		logger.info(str(key))
 		if key != None:
 			return json.dumps(vbucket_mapping[key])
 		else:
@@ -1047,7 +1053,7 @@ class DiskMapper:
 		else:
 			file_content.update({storage_server : {disk : {disk_type : host_name, "status" : status}}})
 		if vbuckets != None:
-			file_content[storage_server][disk][type+"_vbs"] = vbuckets
+			file_content[storage_server][disk][disk_type+"_vbs"] = vbuckets
 		#logger.debug("Mapping to be written to file : " + str(file_content))
 		write_mapping(self.mapping_file, file_content)
 		verify_content = read_mapping(self.mapping_file)
