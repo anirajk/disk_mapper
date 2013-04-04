@@ -666,8 +666,6 @@ class StorageServer:
             else:
                 os.remove(path)
 
-            if os.path.exists(path):
-                return False
             return True
         except:
             return False
