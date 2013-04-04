@@ -180,18 +180,24 @@ class StorageServer:
         self._start_response()
         return "Successfully removed entry from file."
 
-    def _remove_line_from_file(self, file, entry):
+    def _remove_line_from_file(self, file, entry, matchdir=False):
         if not os.path.exists(file):
             return True
-    
-        lockfd = acquire_lock("%s.lock" %file)
 
+        entry = entry.strip()
+        if matchdir and entry[-1] != '/':
+                entry = entry + '/'
+
+        lockfd = acquire_lock("%s.lock" %file)
         f = open(file, 'r+')
         file_content = f.readlines()
         f.seek(0, 0)
         f.truncate()
         for line in file_content:
-            if entry.strip('\n') != line.strip('\n'):
+            if matchdir:
+                if not line.startswith(entry):
+                    f.write(line)
+            elif entry != line.strip('\n'):
                 f.write(line)
         os.fsync(f)
         f.close()
@@ -577,7 +583,7 @@ class StorageServer:
             self._start_response()
             return ["File not found."]
 
-        if ".promoting" not in file_name and len(file_name.split("/")) < 7:
+        if ".promoting" not in file_name and len(file_name.split("/")) < 5:
             self.status = '400 Bad Request'
             self._start_response()
             return "Invalid arguments."
@@ -601,16 +607,6 @@ class StorageServer:
         self.status = '202 Accepted'
         path = self.environ["PATH_TRANSLATED"]
 
-        if os.path.basename(path).startswith("lock-"):
-            path_info = self.environ["PATH_INFO"]
-            document_root = self.environ["DOCUMENT_ROOT"]
-            splits =  path_info.split("/")
-            host_symlink = os.path.join(document_root, splits[1], splits[2])
-            host_path = os.readlink(host_symlink)
-            actual_path_prefix = host_path.replace("/var/www/html/membase_backup", "")
-            actual_path = path.replace(host_symlink, actual_path_prefix)
-            self.resume_coalescer(actual_path)
-
         if not os.path.exists(path):
             self.status = '404 Not Found'
             self._start_response()
@@ -620,6 +616,26 @@ class StorageServer:
             self.status = '403 Forbidden'
             self._start_response()
             return ["No permission to delete file."]
+
+        path_info = self.environ["PATH_INFO"]
+        document_root = self.environ["DOCUMENT_ROOT"]
+        splits =  path_info.split("/")
+        host_symlink = os.path.join(document_root, splits[1], splits[2])
+        if os.path.islink(host_symlink):
+            host_path = os.readlink(host_symlink)
+            actual_path_prefix = host_path.replace("/var/www/html/membase_backup", "")
+            actual_path = path.replace(host_symlink, actual_path_prefix)
+            disk = actual_path.split("/")[1]
+
+            if os.path.basename(path).startswith("lock-"):
+                self.resume_coalescer(actual_path)
+            else:
+                self._kill_merge(disk)
+
+            dirty_file = os.path.join("/", disk, "dirty")
+            to_be_deleted_file = os.path.join("/", disk, "to_be_deleted")
+            self._remove_line_from_file(dirty_file, actual_path, True)
+            self._append_to_file(to_be_deleted_file, actual_path)
 
         if self._delete_file_folder(path):
             d = os.path.dirname(path)
