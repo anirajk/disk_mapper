@@ -11,7 +11,7 @@ config = {
               {'username' : 'membase', 
                'password' : 'm3mb@s3@p1t00l',
                'gameid' : 'membase',
-               'env' : 'auto',
+               'env' : 'prod',
                'mcs_key_name' : 'ACTIVE_MCS',
                'retries' : 60,
               },
