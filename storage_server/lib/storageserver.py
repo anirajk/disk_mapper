@@ -20,6 +20,7 @@ hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.DEBUG)
 DELETE_LEVEL = 5
+BAD_DISK_FILE = "/var/tmp/disk_mapper/bad_disk"
 
 
 def acquire_lock(lock_file):
@@ -304,15 +305,44 @@ class StorageServer:
         self._start_response()
         return str(last_mtime)
 
+    def _get_lines(self, filepath):
+        if os.path.exists(filepath):
+            lockfile = "%s.lock" %filepath
+            lockfd = acquire_lock(lockfile)
+            f = open(filepath)
+            lines = map(lambda x: x.strip(), f.readlines())
+            release_lock(lockfd)
+            return lines
+
+        return []
+
     def get_config(self):
         self.status = '202 Accepted'
         mapping = {}
         path = "/var/www/html/membase_backup/"
+        bad_disks = self._get_lines(BAD_DISK_FILE)
+
         for disk in sorted(os.listdir(path)):
+            bad = False
+            for bd in bad_disks:
+                if disk in bd:
+                    bad = True
+                    break
+
+            if bad:
+                continue
+
             mapping[disk] = {}
             disk_path = os.path.join(path, disk)
             if os.path.isdir(disk_path):
-                for type in  os.listdir(disk_path):
+                try:
+                    disk_types = os.listdir(disk_path)
+                except Exception, e:
+                    logger.error("Unable to list disk types for %s (%s)" %(disk_path, str(e)))
+                    self._append_to_file(BAD_DISK_FILE, disk)
+                    continue
+
+                for type in disk_types:
                     if type == "primary" or type == "secondary":
                         type_path = os.path.join(disk_path, type)
                         if os.path.isdir(type_path):
