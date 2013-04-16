@@ -335,10 +335,17 @@ class StorageServer:
             mapping[disk] = {}
             disk_path = os.path.join(path, disk)
             if os.path.isdir(disk_path):
-                try:
-                    disk_types = os.listdir(disk_path)
-                except Exception, e:
-                    logger.error("Unable to list disk types for %s (%s)" %(disk_path, str(e)))
+                for r in range(5):
+                    try:
+                        disk_types = os.listdir(disk_path)
+                        errmsg = None
+                        break
+                    except Exception, e:
+                        time.sleep(1)
+                        errmsg = str(e)
+
+                if errmsg:
+                    logger.error("BAD_DISK: Unable to list disk types for %s (%s)" %(disk_path, str(e)))
                     self._append_to_file(BAD_DISK_FILE, disk)
                     continue
 
