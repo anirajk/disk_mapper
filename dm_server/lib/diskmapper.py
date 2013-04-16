@@ -272,14 +272,9 @@ class DiskMapper:
 			if server_config == False:
 				logger.error("Failed to get bad disks form storage server: " + storage_server)
 				return False
-		else:
-			server_config = self._get_mapping("storage_server",storage_server)
-			if server_config == False:
-				return True
 
 		current_mapping = self._get_mapping("storage_server",storage_server)
-		for disk in sorted(server_config):
-			
+		for disk in current_mapping:
 			status = "bad"
 			if swap_all_disk == False:
 				if disk not in bad_disks:
@@ -289,14 +284,13 @@ class DiskMapper:
 				if current_mapping[disk]["status"] == "bad":
 					continue
 
-				for type in sorted(server_config[disk]):
+				for type in sorted(current_mapping[disk]):
 
 					if type == "status":
 						continue
 
-					host_name = server_config[disk][type]
+					host_name = current_mapping[disk][type]
 					if host_name != "spare":
-						
 						if type == "primary":
 							cp_from_type = "secondary"
 						elif type == "secondary":
@@ -305,9 +299,6 @@ class DiskMapper:
 						mapping = self._get_mapping("host", host_name)
 						if mapping == False:
 							logger.error("Failed to get mapping for " + host_name)
-							continue
-
-						if type in mapping.keys() and swap_all_disk == False:
 							continue
 
 						try:
