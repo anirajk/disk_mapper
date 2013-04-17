@@ -20,6 +20,7 @@ hdlr.setFormatter(formatter)
 logger.addHandler(hdlr)
 logger.setLevel(logging.DEBUG)
 DELETE_LEVEL = 5
+LIST_FAIL_RETRIES = 5
 BAD_DISK_FILE = "/var/tmp/disk_mapper/bad_disk"
 
 
@@ -335,13 +336,12 @@ class StorageServer:
             mapping[disk] = {}
             disk_path = os.path.join(path, disk)
             if os.path.isdir(disk_path):
-                for r in range(5):
+                for r in range(LIST_FAIL_RETRIES):
                     try:
                         disk_types = os.listdir(disk_path)
                         errmsg = None
                         break
                     except Exception, e:
-                        time.sleep(1)
                         errmsg = str(e)
 
                 if errmsg:
