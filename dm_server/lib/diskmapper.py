@@ -341,13 +341,12 @@ class DiskMapper:
 						# Copy host
 						if  self._rehydrate_replica(cp_from_server, cp_from_file) == False:
 							logger.error("Failed to rehydrate replica for " + storage_server + ":" + cp_from_file)
-							continue
 
-						# Add to to-be-promoted list
-						to_be_promoted = cp_to_server + ":" + cp_to_disk + ":"  + cp_to_type + ":"  + host_name
-						if self._add_entry(cp_from_server, to_be_promoted, "to_be_promoted") == False:
-							logger.error("Failed to add " + to_be_promoted + " to to_be_promoted list on " + cp_from_server)
-							continue
+						else:
+							# Add to to-be-promoted list
+							to_be_promoted = cp_to_server + ":" + cp_to_disk + ":"  + cp_to_type + ":"  + host_name
+							if self._add_entry(cp_from_server, to_be_promoted, "to_be_promoted") == False:
+								logger.error("Failed to add " + to_be_promoted + " to to_be_promoted list on " + cp_from_server)
 
 						self._update_mapping(storage_server, disk, type, host_name, status)
 					elif swap_all_disk != False:
