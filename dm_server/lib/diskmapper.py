@@ -241,7 +241,7 @@ class DiskMapper:
 		return False
 
 	def swap_bad_disk(self, storage_servers=None):
-		lockfd = acquire_lock(self.host_init_lock)
+
 
 		storage_servers = config['storage_server']
 		jobs = []
@@ -257,20 +257,21 @@ class DiskMapper:
 		for j in jobs:
 			j.join()
 
-		release_lock(lockfd)
-
 	def poll_bad_file(self, storage_server, swap_all_disk=False):
+		lockfd = acquire_lock(self.host_init_lock)
 		logger.debug ("Started poll_bad_file for " + storage_server + " with swap_all_disk = " + str(swap_all_disk))
 		
 		if swap_all_disk == False:
 			server_config = self._get_server_config(storage_server)
 			if server_config == False:
 				logger.error("Failed to get config from storage server: " + storage_server)
+		        release_lock(lockfd)
 				return False
 
 			bad_disks = self._get_bad_disks(storage_server)
 			if server_config == False:
 				logger.error("Failed to get bad disks form storage server: " + storage_server)
+		        release_lock(lockfd)
 				return False
 
 		current_mapping = self._get_mapping("storage_server",storage_server)
@@ -351,6 +352,7 @@ class DiskMapper:
 						self._update_mapping(storage_server, disk, type, host_name, status)
 					elif swap_all_disk != False:
 						self._update_mapping(storage_server, disk, type, host_name, status)
+		release_lock(lockfd)
 
 
 	def delete_merged_files(self):
