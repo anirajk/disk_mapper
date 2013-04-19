@@ -349,9 +349,9 @@ class DiskMapper:
 							logger.error("Failed to add " + to_be_promoted + " to to_be_promoted list on " + cp_from_server)
 							continue
 
-						self._update_mapping(storage_server, disk, type, host_name + "-bad", status)
+						self._update_mapping(storage_server, disk, type, host_name, status)
 					elif swap_all_disk != False:
-						self._update_mapping(storage_server, disk, type, host_name + "-bad", status)
+						self._update_mapping(storage_server, disk, type, host_name, status)
 
 
 	def delete_merged_files(self):
