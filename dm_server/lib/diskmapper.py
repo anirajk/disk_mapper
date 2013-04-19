@@ -265,13 +265,13 @@ class DiskMapper:
 			server_config = self._get_server_config(storage_server)
 			if server_config == False:
 				logger.error("Failed to get config from storage server: " + storage_server)
-		        release_lock(lockfd)
+				release_lock(lockfd)
 				return False
 
 			bad_disks = self._get_bad_disks(storage_server)
 			if server_config == False:
 				logger.error("Failed to get bad disks form storage server: " + storage_server)
-		        release_lock(lockfd)
+				release_lock(lockfd)
 				return False
 
 		current_mapping = self._get_mapping("storage_server",storage_server)
@@ -639,7 +639,7 @@ class DiskMapper:
 					if host_name == "spare":
 						continue
 
-					host_mapping = self._get_server_config("host", host_name)
+					host_mapping = self._get_server_config(host_name)
 					if host_mapping == False:
 						continue
 
