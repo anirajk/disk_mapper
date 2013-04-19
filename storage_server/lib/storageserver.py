@@ -324,6 +324,7 @@ class StorageServer:
         bad_disks = self._get_lines(BAD_DISK_FILE)
 
         for disk in sorted(os.listdir(path)):
+            mapping[disk] = {}
             bad = False
             for bd in bad_disks:
                 if disk in bd:
@@ -333,7 +334,6 @@ class StorageServer:
             if bad:
                 continue
 
-            mapping[disk] = {}
             disk_path = os.path.join(path, disk)
             if os.path.isdir(disk_path):
                 for r in range(LIST_FAIL_RETRIES):
