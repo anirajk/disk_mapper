@@ -54,7 +54,6 @@ Setup NetOps storage server to backup up data.
 /etc/init.d/disk_mapper
 /etc/httpd/conf.d/disk_mapper.conf
 /opt/disk_mapper/diskmapper_daemon.py
-/opt/disk_mapper/remove_host.py
 /usr/bin/zstore_cmd
 /tmp/urlrelay-0.7.1.tar.bz2
 
