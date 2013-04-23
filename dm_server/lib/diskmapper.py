@@ -69,7 +69,7 @@ class DiskMapper:
 
 		logger.debug("Redirect request : " + request_uri)
 		host_name =  path.split("/")[5]
-		mapping = self._get_mapping ("host", host_name)
+		mapping = self._get_mapping("host", host_name, False)
 			
 		if mapping == False:
 			logger.error("Failed to get mapping for : " + host_name)
