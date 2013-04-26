@@ -324,7 +324,6 @@ class StorageServer:
         bad_disks = self._get_lines(BAD_DISK_FILE)
 
         for disk in sorted(os.listdir(path)):
-            mapping[disk] = {}
             bad = False
             for bd in bad_disks:
                 if disk in bd:
@@ -334,36 +333,36 @@ class StorageServer:
             if bad:
                 continue
 
+            mapping[disk] = {}
             disk_path = os.path.join(path, disk)
             if os.path.isdir(disk_path):
                 for r in range(LIST_FAIL_RETRIES):
                     try:
                         disk_types = os.listdir(disk_path)
+                        for type in disk_types:
+                            if type == "primary" or type == "secondary":
+                                type_path = os.path.join(disk_path, type)
+                                if os.path.isdir(type_path):
+
+                                    if os.listdir(type_path) == []:
+                                        mapping[disk].update({type : "spare"})
+                                    else:
+                                        for host_name in os.listdir(type_path):
+                                            if host_name.startswith("."):
+                                                continue
+                                            if not os.path.exists(os.path.join(type_path, host_name, ".promoting")):
+                                                mapping[disk].update({type : host_name})
+                                            else:
+                                                mapping[disk].update({type : "promoting"})
                         errmsg = None
                         break
                     except Exception, e:
                         errmsg = str(e)
 
-                if errmsg:
-                    logger.error("BAD_DISK: Unable to list disk types for %s (%s)" %(disk_path, str(e)))
-                    self._append_to_file(BAD_DISK_FILE, disk)
-                    continue
-
-                for type in disk_types:
-                    if type == "primary" or type == "secondary":
-                        type_path = os.path.join(disk_path, type)
-                        if os.path.isdir(type_path):
-
-                            if os.listdir(type_path) == []:
-                                mapping[disk].update({type : "spare"})
-                            else:
-                                for host_name in os.listdir(type_path):
-                                    if host_name.startswith("."):
-                                        continue
-                                    if not os.path.exists(os.path.join(type_path, host_name, ".promoting")):
-                                        mapping[disk].update({type : host_name})
-                                    else:
-                                        mapping[disk].update({type : "promoting"})
+                    if errmsg:
+                        logger.error("BAD_DISK: Unable to list disk types for %s (%s)" %(disk_path, str(e)))
+                        self._append_to_file(BAD_DISK_FILE, disk)
+                        continue
 
         self.status = '200 OK'
         self._start_response()
