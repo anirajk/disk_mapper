@@ -60,7 +60,7 @@ class DiskMapper:
 			self.response_headers = [('Content-type', 'text/plain')]
 		if not os.path.exists("/var/run/disk_mapper.lock"):
 			logger.info("=== Disk Mapper service is Not running ===")
-			exit()
+			exit(1)
 
 	def forward_request(self):
 		self.status = '202 Accepted'
