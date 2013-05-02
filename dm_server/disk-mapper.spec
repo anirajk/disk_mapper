@@ -48,6 +48,7 @@ Setup NetOps storage server to backup up data.
 /opt/disk_mapper/__init__.py
 /opt/disk_mapper/request_handler.py
 /opt/disk_mapper/config.py
+/opt/disk_mapper/remove_host.py
 /opt/disk_mapper/lib/*.py
 
 %defattr(-, root, root, 0755)
