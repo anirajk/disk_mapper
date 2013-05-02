@@ -2,6 +2,7 @@ FILES=__init__.py\
  request_handler.py\
  config.py\
  diskmapper_daemon.py\
+ remove_host.py\
  lib/diskmapper.py\
  lib/flock.py\
  lib/urlmapper.py\

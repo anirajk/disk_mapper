@@ -3,6 +3,7 @@ FILES=__init__.py\
  hook.sh\
  hook_complete.sh\
  hook_error.sh\
+ disk_reinitialize.sh\
  resume_coalescer.py\
  lib/storageserver.py\
  lib/urlmapper.py\
