@@ -9,7 +9,7 @@ from pwd import getpwnam
 
 HOST_MAPPING_PATH = '/var/tmp/disk_mapper/host.mapping'
 HOST_MAPPING_LOCK_PATH = '/var/tmp/disk_mapper/host.mapping.lock'
-USER = 'storageserver'
+USER = 'apache'
 
 def read_mapping(filename):
     file_content = {}
