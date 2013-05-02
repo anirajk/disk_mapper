@@ -28,7 +28,7 @@ Setup NetOps storage server to backup up data.
     %{buildroot}/etc/init.d/ \
     %{buildroot}/usr/bin/
 
-%{__cp} __init__.py config.py diskmapper_daemon.py request_handler.py %{buildroot}/opt/disk_mapper/
+%{__cp} __init__.py config.py diskmapper_daemon.py request_handler.py remove_host.py %{buildroot}/opt/disk_mapper/
 %{__cp} __init__.py lib/flock.py lib/diskmapper.py lib/urlmapper.py %{buildroot}/opt/disk_mapper/lib/
 %{__cp} init.d/disk_mapper %{buildroot}/etc/init.d/
 %{__cp} packages/urlrelay-0.7.1.tar.bz2 %{buildroot}/tmp/
