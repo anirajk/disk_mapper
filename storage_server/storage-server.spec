@@ -1,4 +1,4 @@
-%define pkg_version 1.0
+%define pkg_version 2.0.test
 %define branch_version 0
 %define _unpackaged_files_terminate_build 0
 
