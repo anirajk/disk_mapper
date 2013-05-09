@@ -958,7 +958,7 @@ class DiskMapper:
 						vb_group = file_content[storage_server][disk][vb_group_type]
 						status = file_content[storage_server][disk]["status"]
 						for vbucket in vbuckets.split(","):
-							if vbuckets not in mapping.keys():
+							if vbucket not in mapping.keys():
 								mapping[vbucket] = {}
 							if status != "good":
 								continue
