@@ -953,7 +953,7 @@ class DiskMapper:
 						if disk_type == "primary_vbs":
 							vb_group_type = "primary"
 						else:
-							vb_group_type = "primary"
+							vb_group_type = "secondary"
 						vbuckets = file_content[storage_server][disk][disk_type]
 						vb_group = file_content[storage_server][disk][vb_group_type]
 						status = file_content[storage_server][disk]["status"]
