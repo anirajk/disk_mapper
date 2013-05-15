@@ -23,7 +23,7 @@ AUTHOR='Shabeeb Qadir <sqadir@zynga.com>'
 MESSAGE_TAG="MembaseBackup"
 CLOUD="$(egrep '^cloud =' /etc/membase-backup/default.ini | awk '{print $NF}')"
 GAME_ID="$(egrep '^game_id =' /etc/membase-backup/default.ini | awk '{print $NF}')"
-HOST_PATH_PREFIX="/var/www/html/$GAME_ID/"
+HOST_PATH_PREFIX="/var/www/html/"
 
 
 # Parse arguments to the script.
