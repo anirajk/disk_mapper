@@ -28,7 +28,7 @@ Setup NetOps storage server to backup up data.
     %{buildroot}/opt/storage_server/lib/ \
     %{buildroot}/usr/bin/
 
-%{__cp} __init__.py request_handler.py resume_coalescer.py hook.sh hook_complete.sh disk_reinitialize.sh hook_error.sh %{buildroot}/opt/storage_server/
+%{__cp} __init__.py request_handler.py resume_coalescer.py hook.sh hook_complete.sh backup_purger.sh disk_reinitialize.sh hook_error.sh %{buildroot}/opt/storage_server/
 %{__cp} __init__.py lib/storageserver.py lib/urlmapper.py %{buildroot}/opt/storage_server/lib/
 %{__cp} packages/urlrelay-0.7.1.tar.bz2 %{buildroot}/tmp/
 %{__cp} packages/BitTornado-0.3.17.tar.gz %{buildroot}/tmp/

@@ -2,6 +2,7 @@ FILES=__init__.py\
  request_handler.py\
  hook.sh\
  hook_complete.sh\
+ backup_purger.sh\
  hook_error.sh\
  disk_reinitialize.sh\
  resume_coalescer.py\
