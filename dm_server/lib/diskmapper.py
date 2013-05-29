@@ -592,25 +592,26 @@ class DiskMapper:
 		retries = int(zrt['retries'])
 		while retries > 0:
 			retries = retries - 1
-			value = self._curl(url, 200, True)
-			if value != False:
-				break
+			resp = self._curl(url, 200, True)
+			if resp != False:
+				try:
+					value = json.loads(resp)
+					active_dm = value["output"][zrt["mcs_key_name"]]
+					ip = socket.gethostbyname(socket.gethostname())
+					logger.debug("ip : " + str(ip) + " active_dm : " + str(active_dm));
+					if active_dm == ip:
+						return True
+					else:
+						return False
+				except:
+					logger.error("ZRuntime returned invalid response(%s)" %resp)
+
 			logger.error("Retrying zruntime connection...")
 			time.sleep(5)
 
-		else:
-			if value == False:
-				logger.error("Failed to get Zruntime data.\nShutting down Disk Mapper.")
-				os.remove("/var/run/disk_mapper.lock")
-				exit(1)
-
-		value = json.loads(value)
-		active_dm = value["output"][zrt["mcs_key_name"]]
-		ip = socket.gethostbyname(socket.gethostname())
-		logger.debug("ip : " + str(ip) + " active_dm : " + str(active_dm));
-		if active_dm == ip:
-			return True
-		return False
+		logger.error("Failed to get Zruntime data.\nShutting down Disk Mapper.")
+		os.remove("/var/run/disk_mapper.lock")
+		exit(1)
 
 		
 	def make_spare(self, storage_server):
@@ -787,8 +788,8 @@ class DiskMapper:
 			if errno == 111:
 				self._check_server_conn(storage_server)
 			return False
-		except:
-			logger.error("Caught unknown error in _curl")
+		except Exception, e:
+			logger.error("Caught unknown error in _curl (%s)" %str(e))
 			return False
 
 		if response.status != exp_return_code and exp_return_code != None:
