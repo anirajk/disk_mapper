@@ -72,8 +72,8 @@ pear install Cache_Lite-1.7.11
 pear install XML_RPC2
 
 
-
-ip=$(ifconfig bond0 | grep -w inet | awk '{print $2}' | sed "s/.*://") ; sed -i "s/@@TRACKER_IP_HERE@@/$ip/" /etc/opentracker/opentracker.conf
+ip=$(host $HOSTNAME | awk '{ print $NF }')
+sed -i "s/@@TRACKER_IP_HERE@@/$ip/" /etc/opentracker/opentracker.conf
 /etc/init.d/opentracker start
 
 cd /tmp/
