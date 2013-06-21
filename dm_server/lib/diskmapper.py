@@ -108,8 +108,11 @@ class DiskMapper:
 	def get_all_config(self):
 		self.status = '202 Accepted'
 		mapping = self._get_mapping ("host")
+		if mapping == False:
+			self.status = '500 OK'
+		else:
+			self.status = '200 OK'
 
-		self.status = '200 OK'
 		self._start_response()
 		logger.debug("Mapping : " + str(mapping))
 		return json.dumps(mapping)
@@ -262,6 +265,10 @@ class DiskMapper:
 			bad_disks = self._get_bad_disks(storage_server)
 
 		current_mapping = self._get_mapping("storage_server",storage_server)
+		if current_mapping == False:
+			release_lock(lockfd)
+			return
+
 		for disk in current_mapping:
 			status = "bad"
 			if swap_all_disk == False:

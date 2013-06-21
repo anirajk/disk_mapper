@@ -68,7 +68,6 @@ python setup.py install
 
 # Create disk mapper tmp folder
 mkdir /var/tmp/disk_mapper
-touch /var/tmp/disk_mapper/host.mapping
 chown -R apache /var/tmp/disk_mapper
 
 # Set perms to init.d script
