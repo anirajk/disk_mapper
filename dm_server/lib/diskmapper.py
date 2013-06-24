@@ -108,11 +108,8 @@ class DiskMapper:
 	def get_all_config(self):
 		self.status = '202 Accepted'
 		mapping = self._get_mapping ("host")
-		if mapping == False:
-			self.status = '500 OK'
-		else:
-			self.status = '200 OK'
 
+		self.status = '200 OK'
 		self._start_response()
 		logger.debug("Mapping : " + str(mapping))
 		return json.dumps(mapping)
@@ -265,10 +262,6 @@ class DiskMapper:
 			bad_disks = self._get_bad_disks(storage_server)
 
 		current_mapping = self._get_mapping("storage_server",storage_server)
-		if current_mapping == False:
-			release_lock(lockfd)
-			return
-
 		for disk in current_mapping:
 			status = "bad"
 			if swap_all_disk == False:
@@ -560,6 +553,13 @@ class DiskMapper:
 	def initialize_diskmapper(self):
 		lockfd = acquire_lock(self.host_init_lock)
 		storage_servers = config['storage_server']
+
+		lock_mapping = acquire_lock(self.mapping_lock)
+		if not os.path.exists(self.mapping_file):
+			f = open(self.mapping_file, 'w')
+			pickle.dump({}, f)
+			f.close()
+		release_lock(lock_mapping)
 
 		for storage_server in storage_servers:
 			if storage_server in self.bad_servers:
