@@ -22,9 +22,9 @@ config = {
                      'server_3_ip',
                     ],
     'zruntime': 
-              {'username' : 'membase', 
-               'password' : 'm3mb@s3@p1t00l',
-               'gameid' : 'membase',
+              {'username' : 'zbase', 
+               'password' : 'zbase-passwd',
+               'gameid' : 'zbase',
                'env' : 'prod',
                'mcs_key_name' : 'ACTIVE_MCS',
                'retries' : 60,

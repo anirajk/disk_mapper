@@ -10,7 +10,7 @@ Group:         Servers/Internet
 Source:        diskmapper.tgz
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root
 Requires:      python httpd mod_wsgi
-License:       Proprietary
+License:       Apache 2.0
 
 %description
 Setup NetOps storage server to backup up data.
