@@ -8,7 +8,7 @@ FILES=__init__.py\
  resume_coalescer.py\
  lib/storageserver.py\
  lib/urlmapper.py\
- config/http_membase_backup.conf\
+ config/http_zbase_backup.conf\
  storage-server.spec\
  ../zstore_cmd/zstore_cmd\
  ../packages/urlrelay-0.7.1.tar.bz2\

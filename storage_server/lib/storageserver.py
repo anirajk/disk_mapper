@@ -184,7 +184,7 @@ class StorageServer:
 
         
         if "type=dirty_files"  in self.query_string or "type=to_be_deleted" in self.query_string:
-            for partition_name in sorted(glob.glob('/var/www/html/membase_backup/data_*')):
+            for partition_name in sorted(glob.glob('/var/www/html/zbase_backup/data_*')):
                 file = partition_name + "/" + file_name
                 self._remove_line_from_file(file, entry)
         else:
@@ -241,7 +241,7 @@ class StorageServer:
 
         file_content = ""
         if "type=dirty_files" in self.query_string or "type=to_be_deleted" in self.query_string:
-            for partition_name in sorted(glob.glob('/var/www/html/membase_backup/data_*')):
+            for partition_name in sorted(glob.glob('/var/www/html/zbase_backup/data_*')):
                 file = partition_name + "/" + file_name
 
                 if os.path.exists(file):
@@ -271,7 +271,7 @@ class StorageServer:
             self._start_response()
             return "Invalid arguments."
             
-        path = os.path.join("/var/www/html/membase_backup/", disk, type)
+        path = os.path.join("/var/www/html/zbase_backup/", disk, type)
 
         if not self._delete_file_folder(path):
             self.status = "400 Bad Request"
@@ -304,7 +304,7 @@ class StorageServer:
             return "Invalid arguments."
             
         mapping = {}
-        path = os.path.join("/var/www/html/membase_backup/", disk, type)
+        path = os.path.join("/var/www/html/zbase_backup/", disk, type)
         
         if os.path.isdir(path):
             last_mtime = 0
@@ -334,7 +334,7 @@ class StorageServer:
     def get_config(self):
         self.status = '202 Accepted'
         mapping = {}
-        path = "/var/www/html/membase_backup/"
+        path = "/var/www/html/zbase_backup/"
         bad_disks = self._get_lines(BAD_DISK_FILE)
 
         for disk in sorted(os.listdir(path)):
@@ -538,7 +538,7 @@ class StorageServer:
         
         document_root = self.environ["DOCUMENT_ROOT"]
         sym_link_name = os.path.join(document_root, game_id, host_name)
-        sym_link_path = os.path.join(document_root, "membase_backup", disk, type, host_name)
+        sym_link_path = os.path.join(document_root, "zbase_backup", disk, type, host_name)
 
         if not os.path.isdir(os.path.dirname(sym_link_name)):
             os.makedirs(os.path.dirname(sym_link_name))
@@ -577,7 +577,7 @@ class StorageServer:
         splits =  path_info.split("/")
         host_symlink = os.path.join(document_root, splits[1], splits[2])
         host_path = os.readlink(host_symlink)
-        actual_path_prefix = host_path.replace("/var/www/html/membase_backup", "")
+        actual_path_prefix = host_path.replace("/var/www/html/zbase_backup", "")
         actual_path = path.replace(host_symlink, actual_path_prefix)
 
         self.pause_coalescer(actual_path)
@@ -674,7 +674,7 @@ class StorageServer:
         host_symlink = os.path.join(document_root, splits[1], splits[2])
         if os.path.islink(host_symlink):
             host_path = os.readlink(host_symlink)
-            actual_path_prefix = host_path.replace("/var/www/html/membase_backup", "")
+            actual_path_prefix = host_path.replace("/var/www/html/zbase_backup", "")
             actual_path = path.replace(host_symlink, actual_path_prefix)
             disk = actual_path.split("/")[1]
 

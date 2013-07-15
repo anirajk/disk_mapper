@@ -9,8 +9,8 @@ Release:       %{branch_version}
 Group:         Servers/Internet
 Source:        storageserver.tgz
 BuildRoot:     %{_tmppath}/%{name}-%{version}-%{release}-root
-Requires:      php python httpd mod_wsgi php-common php-pear php-devel php-cli php-pdo openssl openssl-devel openssl098e openssl-static openssl-perl ztorrent-client ztorrent-tracker
-License:       Proprietary
+Requires:      python httpd mod_wsgi ztorrent-client ztorrent-tracker
+License:       Apache 2.0
 
 %description
 Setup NetOps storage server to backup up data.
@@ -24,7 +24,7 @@ Setup NetOps storage server to backup up data.
 %{__mkdir_p} \
     %{buildroot}/tmp/ \
     %{buildroot}/etc/httpd/conf.d/ \
-    %{buildroot}/var/www/html/membase_backup/ \
+    %{buildroot}/var/www/html/zbase_backup/ \
     %{buildroot}/opt/storage_server/lib/ \
     %{buildroot}/usr/bin/
 
@@ -36,7 +36,7 @@ Setup NetOps storage server to backup up data.
 %{__chmod} +x  %{buildroot}/opt/storage_server/*.sh
 %{__chmod} +x  %{buildroot}/opt/storage_server/lib/*.py
 
-%{__cp} config/http_membase_backup.conf %{buildroot}/etc/httpd/conf.d/membase_backup.conf
+%{__cp} config/http_zbase_backup.conf %{buildroot}/etc/httpd/conf.d/zbase_backup.conf
 
 %{__cp} zstore_cmd/zstore_cmd %{buildroot}/usr/bin/
 %{__cp} backup_purger.sh %{buildroot}/usr/bin/
@@ -54,7 +54,7 @@ Setup NetOps storage server to backup up data.
 /opt/storage_server/lib/*.py
 
 %defattr(-, root, root, 0755)
-/etc/httpd/conf.d/membase_backup.conf
+/etc/httpd/conf.d/zbase_backup.conf
 /usr/bin/zstore_cmd
 /tmp/BitTornado-0.3.17.tar.gz
 /tmp/urlrelay-0.7.1.tar.bz2
@@ -73,9 +73,15 @@ pear install HTTP_Request2-2.0.0RC1
 pear install Cache_Lite-1.7.11
 pear install XML_RPC2
 
+inf=bond0
+ifconfig bond0
+if [ $? -ne 0 ];
+then
+    inf=eth0
+fi
 
-
-ip=$(ifconfig bond0 | grep -w inet | awk '{print $2}' | sed "s/.*://") ; sed -i "s/@@TRACKER_IP_HERE@@/$ip/" /etc/opentracker/opentracker.conf
+ip=$(ifconfig $inf | grep -w inet | awk '{print $2}' | sed "s/.*://");
+sed -i "s/@@TRACKER_IP_HERE@@/$ip/" /etc/opentracker/opentracker.conf
 /etc/init.d/opentracker start
 
 cd /tmp/
@@ -87,8 +93,8 @@ sed -i "s/from sha import sha/from hashlib import sha1 as sha/" /usr/lib/python2
 sed -i "s/from sha import sha/from hashlib import sha1 as sha/" /usr/lib/python2.6/site-packages/BitTornado/__init__.py
 
 # Setup symlinks to partition.
-mkdir /var/www/html/membase_backup
-for part in `df | grep "/data_" |  awk '{print $NF}' ` ; do  ln -s $part /var/www/html/membase_backup$part ; chmod -R 0777 $part ; done
+mkdir /var/www/html/zbase_backup
+for part in `df | grep "/data_" |  awk '{print $NF}' ` ; do  ln -s $part /var/www/html/zbase_backup$part ; chmod -R 0777 $part ; done
 
 # Create primary and secondary on each disk
 for disk in `df -h | grep data_ | awk '{print $NF}' ` ; do mkdir $disk/primary ; mkdir $disk/secondary ; done
@@ -113,7 +119,7 @@ sed -i -e "s/User apache/User storageserver/" -e "s/Group apache/Group storagese
 %preun
 
 %postun
-rm -rf /etc/httpd/conf.d/membase_backup.conf
+rm -rf /etc/httpd/conf.d/zbase_backup.conf
 
 
 

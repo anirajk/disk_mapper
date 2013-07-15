@@ -669,7 +669,7 @@ class DiskMapper:
 		return False
 
 	def _create_torrent(self, storage_server, file):
-		# http://netops-demo-mb-220.va2/api/membase_backup?action=create_torrent&file_path=/data_2/primary/empire-mb-user-b-001/zc1/incremental/test1/
+		# http://netops-demo-mb-220.va2/api/zbase_backup?action=create_torrent&file_path=/data_2/primary/empire-mb-user-b-001/zc1/incremental/test1/
 		url = 'http://' + storage_server + '/api?action=create_torrent&file_path=' + file
 		value = self._curl(url, 200)
 		if value != False:
@@ -677,7 +677,7 @@ class DiskMapper:
 		return False
 
 	def _add_entry(self, storage_server, entry, file_type):
-		# http://netops-demo-mb-220.va2/api/membase_backup?action=add_entry&type=bad_disk&entry=%22/data_1%22
+		# http://netops-demo-mb-220.va2/api/zbase_backup?action=add_entry&type=bad_disk&entry=%22/data_1%22
 		url = 'http://' + storage_server + '/api?action=add_entry&entry=' + entry + '&type=' + file_type
 		value = self._curl(url, 200)
 		if value != False:
@@ -685,7 +685,7 @@ class DiskMapper:
 		return False
 
 	def _delete_file(self, storage_server, file_name):
-		# http://netops-demo-mb-220.va2/api/membase_backup?action=delete_file&file_name=/data_1/primary/game-mb-6/zc1/daily/small_file:1
+		# http://netops-demo-mb-220.va2/api/zbase_backup?action=delete_file&file_name=/data_1/primary/game-mb-6/zc1/daily/small_file:1
 		url = 'http://' + storage_server + '/api?action=delete_file&file_name=' + file_name.rstrip() 
 		value = self._curl(url, 200)
 		if value != False:
@@ -693,7 +693,7 @@ class DiskMapper:
 		return False
 
 	def _remove_entry(self, storage_server, entry, file_type):
-		# http://netops-demo-mb-220.va2/api/membase_backup?action=remove_entry&type=bad_disk&entry=%22/data_1%22
+		# http://netops-demo-mb-220.va2/api/zbase_backup?action=remove_entry&type=bad_disk&entry=%22/data_1%22
 		url = 'http://' + storage_server + '/api?action=remove_entry&entry=' + entry.rstrip() + '&type=' + file_type
 		value = self._curl(url, 200)
 		if value != False:
@@ -709,7 +709,7 @@ class DiskMapper:
 		return False
 
 	def _start_download(self, storage_server, file, torrent_url):
-		# http://netops-demo-mb-220.va2/api/membase_backup?action=start_download&file_path=/data_3/secondary/empire-mb-user-b-001/zc1/&torrent_url=http://10.36.168.173/torrent/1347783417.torrent
+		# http://netops-demo-mb-220.va2/api/zbase_backup?action=start_download&file_path=/data_3/secondary/empire-mb-user-b-001/zc1/&torrent_url=http://10.36.168.173/torrent/1347783417.torrent
 		url = 'http://' + storage_server + '/api?action=start_download&file_path=' + file.rstrip() + '&torrent_url=' + torrent_url
 		value = self._curl(url, 200)
 		if value != False:
