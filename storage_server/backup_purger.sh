@@ -122,7 +122,7 @@ function main() {
     [[ $NUM_MASTER_BACKUP -eq 0 ]] && logIt "\-m should be non-zero." && exit 1
 
     # Master backups.
-    master_backups=$(find /var/www/html/membase_backup/$GAME_ID/*/$CLOUD/master/ | grep -v "mbb\|split\|done\|merged\|master\/$" | sort -n)
+    master_backups=$(find /var/www/html/$GAME_ID/*/$CLOUD/master/ | grep -v "mbb\|split\|done\|merged\|complete\|master\/$" | sort -n)
 
     # Generating a list of months for which backups are to be kept.
     
@@ -155,7 +155,7 @@ function main() {
     do
 
         master_backups=""
-        master_backups=$(find /var/www/html/membase_backup/$GAME_ID/$host/$CLOUD/master/ | grep -v "mbb\|split\|done\|merged\|master\/$" | sort -n)
+        master_backups=$(find /var/www/html/$GAME_ID/$host/$CLOUD/master/ | grep -v "mbb\|split\|done\|complete\|merged\|master\/$" | sort -n)
         
         for month in $date_range 
         do
