@@ -146,8 +146,8 @@ function main() {
     # Generate months for which selective backup is to be kept.
     tmp_date=""
     now=`date +"%Y-%m-%d" -d "$NUM_MASTER_BACKUP month ago"` 
+    date_range=`date +"%Y-%m" --date "$now"`
     end=`date +"%Y-%m" -d "$(expr $NUM_MASTER_BACKUP + $NUM_SELECTIVE_BACKUP ) months ago"`   
-    date_range=""
     while [ "$tmp_date" != "$end" ] ; do now=`date +"%Y-%m-%d" --date "$now 1 month ago"`;  tmp_date=`date +"%Y-%m" --date "$now"` ; date_range="$date_range $tmp_date" ;done
 
     # For each month keep the first backup.
