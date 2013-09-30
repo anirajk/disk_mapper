@@ -1,1 +1,2 @@
 @weekly root /usr/bin/backup_purger.sh -d 7 -m 1 -s 4
+@weekly root /opt/storage_server/cleanup_file.py /var/tmp/disk_mapper/copy_completed

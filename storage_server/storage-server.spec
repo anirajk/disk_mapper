@@ -16,7 +16,7 @@ License:       Apache 2.0
 Setup NetOps storage server to backup up data.
 
 %prep
-%setup -q -c storage-server-%{version} 
+%setup -q -c storage-server-%{version}
 
 
 %install
@@ -24,11 +24,12 @@ Setup NetOps storage server to backup up data.
 %{__mkdir_p} \
     %{buildroot}/tmp/ \
     %{buildroot}/etc/httpd/conf.d/ \
+    %{buildroot}/etc/cron.d/ \
     %{buildroot}/var/www/html/zbase_backup/ \
     %{buildroot}/opt/storage_server/lib/ \
     %{buildroot}/usr/bin/
 
-%{__cp} __init__.py request_handler.py resume_coalescer.py hook.sh hook_complete.sh disk_reinitialize.sh hook_error.sh %{buildroot}/opt/storage_server/
+%{__cp} __init__.py request_handler.py resume_coalescer.py hook.sh hook_complete.sh disk_reinitialize.sh hook_error.sh utils/cleanup_file.py %{buildroot}/opt/storage_server/
 %{__cp} __init__.py lib/storageserver.py lib/urlmapper.py %{buildroot}/opt/storage_server/lib/
 %{__cp} packages/urlrelay-0.7.1.tar.bz2 %{buildroot}/tmp/
 %{__cp} packages/BitTornado-0.3.17.tar.gz %{buildroot}/tmp/
@@ -37,7 +38,7 @@ Setup NetOps storage server to backup up data.
 %{__chmod} +x  %{buildroot}/opt/storage_server/lib/*.py
 
 %{__cp} config/http_zbase_backup.conf %{buildroot}/etc/httpd/conf.d/zbase_backup.conf
-
+%{__cp} utils/backup-purge.cron %{buildroot}/etc/cron.d/
 %{__cp} zstore_cmd/zstore_cmd %{buildroot}/usr/bin/
 %{__cp} backup_purger.sh %{buildroot}/usr/bin/
 %{__chmod} +x  %{buildroot}/usr/bin/zstore_cmd
@@ -124,6 +125,9 @@ rm -rf /etc/httpd/conf.d/zbase_backup.conf
 
 
 %changelog
+
+* Mon Sep 30 2013 - akalathel@zynga.com
+- Adding purger cron. adding file cleanup script
 
 * Tue Dec 11 2012 - sqadir@zynga.com
 - SEG-10543 - Remove torrent file, if pausing coalescer fails.
