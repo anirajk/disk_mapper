@@ -126,7 +126,7 @@ class StorageServer:
         elif "type=dirty_files" in self.query_string:
             file_name = "dirty"
         elif "type=copy_completed" in self.query_string:
-            file_name = "/var/tmp/disk_mapper/copy_completed"
+            file = "/var/tmp/disk_mapper/copy_completed"
         else:
             self.status = '400 Bad Request'
             self._start_response()

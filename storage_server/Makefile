@@ -8,6 +8,7 @@ FILES=__init__.py\
  resume_coalescer.py\
  lib/storageserver.py\
  lib/urlmapper.py\
+ utils/backup-purge.cron\
  config/http_zbase_backup.conf\
  storage-server.spec\
  ../zstore_cmd/zstore_cmd\
@@ -19,7 +20,7 @@ FILES=__init__.py\
 all:
 	@echo "What do you want me to do ?"
 
-tarball: 
+tarball:
 	tar -czvf storageserver.tgz $(FILES)
 
 rpm: tarball
