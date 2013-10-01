@@ -15,4 +15,4 @@
 #   limitations under the License.
 
 python /opt/storage_server/resume_coalescer.py $3
-echo $3 >> /var/tmp/disk_mapper/copy_completed
+curl "http://127.0.0.1/api?action=add_entry&entry=$3&type=copy_completed"

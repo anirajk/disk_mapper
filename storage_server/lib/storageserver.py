@@ -50,7 +50,7 @@ def release_lock(fd):
 class StorageServer:
 
     def __init__(self, environ, start_response):
-        
+
         if environ != None:
             if subprocess.call('ps ax | grep opentracke[r]', shell=True) != 0:
                 logger.error("Opentracker service is stopped.")
@@ -126,7 +126,7 @@ class StorageServer:
         elif "type=dirty_files" in self.query_string:
             file_name = "dirty"
         elif "type=copy_completed" in self.query_string:
-            file_name = "copy_completed"
+            file_name = "/var/tmp/disk_mapper/copy_completed"
         else:
             self.status = '400 Bad Request'
             self._start_response()
@@ -141,7 +141,7 @@ class StorageServer:
             return "Invalid arguments."
 
         if "type=dirty_files"  in self.query_string in self.query_string:
-            partition_name = "/" + entry.split("/")[1] 
+            partition_name = "/" + entry.split("/")[1]
             file = partition_name + "/" + file_name
             self._append_to_file(file, entry)
         elif "type=bad_disk" in self.query_string:
@@ -182,14 +182,14 @@ class StorageServer:
             self._start_response()
             return "Invalid file type"
 
-        
+
         if "type=dirty_files"  in self.query_string or "type=to_be_deleted" in self.query_string:
             for partition_name in sorted(glob.glob('/var/www/html/zbase_backup/data_*')):
                 file = partition_name + "/" + file_name
                 self._remove_line_from_file(file, entry)
         else:
             self._remove_line_from_file(file, entry)
-        
+
         if "type=copy_completed" in self.query_string or "type=dirty_files" in self.query_string:
             self.resume_coalescer(entry)
 
@@ -245,12 +245,12 @@ class StorageServer:
                 file = partition_name + "/" + file_name
 
                 if os.path.exists(file):
-                    f = open (file, "r") 
+                    f = open (file, "r")
                     file_content = file_content + f.read() + "\n"
                     f.close()
         else:
             if os.path.exists(file):
-                f = open (file, "r") 
+                f = open (file, "r")
                 file_content = file_content + f.read()
                 f.close()
 
@@ -270,12 +270,12 @@ class StorageServer:
             self.status = '400 Bad Request'
             self._start_response()
             return "Invalid arguments."
-            
+
         path = os.path.join("/var/www/html/zbase_backup/", disk, type)
 
         if not self._delete_file_folder(path):
             self.status = "400 Bad Request"
-        
+
         document_root = self.environ["DOCUMENT_ROOT"]
 
         for subfolders in os.listdir(document_root):
@@ -286,7 +286,7 @@ class StorageServer:
                     if os.path.islink(link):
                         if os.path.join(disk, type) in os.readlink(link):
                             os.remove(link)
-                
+
         self.status = "200 OK"
         self._start_response()
         return disk + "/" + type + " is a spare"
@@ -302,10 +302,10 @@ class StorageServer:
             self.status = '400 Bad Request'
             self._start_response()
             return "Invalid arguments."
-            
+
         mapping = {}
         path = os.path.join("/var/www/html/zbase_backup/", disk, type)
-        
+
         if os.path.isdir(path):
             last_mtime = 0
             for root, dirs, files in os.walk(path, topdown=False, followlinks=True):
@@ -397,7 +397,7 @@ class StorageServer:
         #ps_cmd = 'ps ax | grep "aria2c -V" | grep "' + os.path.dirname(file_path + "/..") + '" | grep "follow-torrent"'
         #logger.debug("ps cmd : " + ps_cmd)
         #ps_status = subprocess.call(ps_cmd, shell=True)
-        
+
         #if ps_status == 1792:
         #    logger.debug("Torrent already downloaded.")
         #    return True
@@ -421,7 +421,7 @@ class StorageServer:
             self._start_response()
             return "True"
 
-        cmd1 = "zstore_cmd del " + torrent_url.replace("http://", "s3://") 
+        cmd1 = "zstore_cmd del " + torrent_url.replace("http://", "s3://")
         logger.debug("Return code of seed cmd : " + str(error_code))
         if error_code != 0 and error_code != 7 and error_code != -15:
             logger.error("Failed to start download : " + cmd + " error code : " + str(error_code))
@@ -525,7 +525,7 @@ class StorageServer:
         type =  qs["type"][0]
         game_id =  qs["game_id"][0]
         disk =  qs["disk"][0]
-        
+
         type_path = os.path.join("/", disk, type)
         if os.listdir(type_path) != []:
             self.status = '400 Bad Request'
@@ -535,7 +535,7 @@ class StorageServer:
         actual_path = os.path.join(type_path, host_name)
         if not os.path.isdir(actual_path):
             os.makedirs(actual_path)
-        
+
         document_root = self.environ["DOCUMENT_ROOT"]
         sym_link_name = os.path.join(document_root, game_id, host_name)
         sym_link_path = os.path.join(document_root, "zbase_backup", disk, type, host_name)
@@ -544,7 +544,7 @@ class StorageServer:
             os.makedirs(os.path.dirname(sym_link_name))
 
         if os.path.islink(sym_link_name):
-            os.remove(sym_link_name)   
+            os.remove(sym_link_name)
         os.symlink(sym_link_path, sym_link_name)
 
         if "promote=true" in self.query_string:
@@ -563,7 +563,7 @@ class StorageServer:
             self.status = '417 Expectation Failed'
             self._start_response()
             return "Host Not initialized for path : " + path_info
-            
+
         block_size = 4096
         file_size = int(self.environ.get('CONTENT_LENGTH','0'))
         chunks = file_size / block_size
@@ -603,7 +603,7 @@ class StorageServer:
 
     def _append_to_file(self, file, line):
         lockfd = acquire_lock("%s.lock" %file)
-        
+
         if os.path.exists(file):
             f = open(file, 'r')
             file_content = f.readlines()
@@ -612,11 +612,11 @@ class StorageServer:
             for entry in file_content:
                 if entry.strip('\n') == line.strip('\n'):
                     return True
-        
+
         f = open(file, 'a+')
         f.write(line + "\n")
         os.fsync(f)
-        f.close()    
+        f.close()
         release_lock(lockfd)
 
     def delete_merged_file(self):
@@ -638,7 +638,7 @@ class StorageServer:
             self.status = '400 Bad Request'
             self._start_response()
             return "Invalid arguments."
-            
+
         if not os.access(file_name, os.W_OK):
             self.status = '403 Forbidden'
             self._start_response()
@@ -648,7 +648,7 @@ class StorageServer:
             self.status = '200 OK'
         else:
             self.status = '400 Bad Request'
-            
+
         self._start_response()
         return ["Deleted " + file_name]
 
@@ -662,7 +662,7 @@ class StorageServer:
             self.status = '404 Not Found'
             self._start_response()
             return ["File not found."]
-            
+
         if not os.access(path, os.W_OK):
             self.status = '403 Forbidden'
             self._start_response()
@@ -701,7 +701,7 @@ class StorageServer:
             self.status = '200 OK'
         else:
             self.status = '400 Bad Request'
-            
+
         self._start_response()
         return ["Deleted " + self.environ["SERVER_NAME"] + self.environ["PATH_INFO"]]
 
@@ -736,7 +736,7 @@ class StorageServer:
         if not os.path.isdir(path):
             self.response_headers.append(('Etag', self._get_md5sum(open(path, "r"))))
             return path
-            
+
         if recursive == False:
             for item in os.listdir(path):
                 full_path = os.path.join(path, item)
@@ -753,7 +753,7 @@ class StorageServer:
                         files.append(os.path.join(root, name) + "/")
 
         return "\n".join(sorted(files))
-    
+
     def _get_md5sum(self, file, block_size=2**20):
         md5 = hashlib.md5()
         while True:
